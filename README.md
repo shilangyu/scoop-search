@@ -1,5 +1,8 @@
 # scoop-search
 
+[![](https://goreportcard.com/badge/github.com/shilangyu/scoop-search)](https://goreportcard.com/report/github.com/shilangyu/scoop-search)
+[![](https://github.com/shilangyu/scoop-search/workflows/ci/badge.svg)](https://github.com/shilangyu/scoop-search/actions)
+
 Fast `scoop search` drop-in replacement 🚀
 
 ## Installation
