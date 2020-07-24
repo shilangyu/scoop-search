@@ -85,7 +85,7 @@ func matchingManifests(path string, term string) (res []match) {
 
 		if strings.Contains(name, term) {
 			// the name matches
-			res = append(res, match{name, jsonBuf.Version, ""})
+			res = append(res, match{name[:len(name)-5], jsonBuf.Version, ""})
 		} else {
 			// the name did not match, lets see if any binary files do
 			var bins []string
@@ -109,7 +109,7 @@ func matchingManifests(path string, term string) (res []match) {
 			for _, bin := range bins {
 				bin = filepath.Base(bin)
 				if strings.Contains(bin, term) {
-					res = append(res, match{name, jsonBuf.Version, bin})
+					res = append(res, match{name[:len(name)-5], jsonBuf.Version, bin})
 					break
 				}
 			}
