@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -106,6 +107,7 @@ func matchingManifests(path string, term string) (res []match) {
 			}
 
 			for _, bin := range bins {
+				bin = filepath.Base(bin)
 				if strings.Contains(bin, term) {
 					res = append(res, match{name, jsonBuf.Version, bin})
 					break
