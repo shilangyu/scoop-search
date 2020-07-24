@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -36,7 +35,7 @@ func main() {
 	buckets, err := ioutil.ReadDir(bucketsPath)
 	checkWith(err, "Scoop folder does not exist")
 
-	// start workers that will find matching names
+	// start workers that will find matching manifests
 	matches := struct {
 		sync.Mutex
 		data matchMap
@@ -77,26 +76,33 @@ func matchingManifests(path string, term string) (res []match) {
 		if !strings.HasSuffix(name, ".json") {
 			continue
 		}
+
+		// parse relevant data from manifest
 		raw, err := ioutil.ReadFile(path + "\\" + name)
 		check(err)
 		json.Unmarshal(raw, &jsonBuf)
 
 		if strings.Contains(name, term) {
+			// the name matches
 			res = append(res, match{name, jsonBuf.Version, ""})
 		} else {
+			// the name did not match, lets see if any binary files do
 			var bins []string
 			if jsonBuf.Bin == nil {
+				// no binaries
 				continue
 			} else if val, ok := jsonBuf.Bin.([]interface{}); ok {
+				// an array of binaries
 				for _, bin := range val {
 					if binStr, ok := bin.(string); ok {
 						bins = append(bins, binStr)
 					}
 				}
 			} else if val, ok := jsonBuf.Bin.(string); ok {
+				// one binary
 				bins = []string{val}
 			} else {
-				log.Fatalln("Cannot parse \"bin\" attribute in a manifest. This should not happen. Please open an issue about it. \nDump:", reflect.TypeOf(jsonBuf.Bin))
+				log.Fatalln(`Cannot parse "bin" attribute in a manifest. This should not happen. Please open an issue about it with steps to reproduce`)
 			}
 
 			for _, bin := range bins {
@@ -113,6 +119,7 @@ func matchingManifests(path string, term string) (res []match) {
 
 func printResults(data matchMap) (anyMatches bool) {
 
+	// sort by bucket names
 	sortedKeys := make([]string, 0, len(data))
 	for k := range data {
 		sortedKeys = append(sortedKeys, k)
