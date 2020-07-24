@@ -108,7 +108,7 @@ func matchingManifests(path string, term string) (res []match) {
 
 			for _, bin := range bins {
 				bin = filepath.Base(bin)
-				if strings.Contains(bin, term) {
+				if strings.Contains(strings.TrimSuffix(bin, filepath.Ext(bin)), term) {
 					res = append(res, match{name[:len(name)-5], jsonBuf.Version, bin})
 					break
 				}
