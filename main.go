@@ -65,12 +65,12 @@ func matchingManifests(path string, term string) (res []match) {
 	files, err := ioutil.ReadDir(path)
 	check(err)
 
-	jsonBuf := struct {
-		Version string
-		Bin     interface{} // can be: nil, string, []string
-	}{}
-
 	for _, file := range files {
+		jsonBuf := struct {
+			Version string
+			Bin     interface{} // can be: nil, string, []string
+		}{}
+
 		name := file.Name()
 
 		// its not a manifest, skip
@@ -116,6 +116,10 @@ func matchingManifests(path string, term string) (res []match) {
 		}
 	}
 
+	sort.SliceStable(res, func(i, j int) bool {
+		return strings.ToLower(res[i].name) < strings.ToLower(res[j].name)
+	})
+
 	return
 }
 
@@ -137,7 +141,7 @@ func printResults(data matchMap) (anyMatches bool) {
 			for _, m := range v {
 				fmt.Printf("    %s (%s)", m.name, m.version)
 				if m.bin != "" {
-					fmt.Printf(` --> includes "%s"`, m.bin)
+					fmt.Printf(" --> includes '%s'", m.bin)
 				}
 				fmt.Println()
 			}
