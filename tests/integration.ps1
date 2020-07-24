@@ -1,6 +1,6 @@
 go build .
 
-$terms = "fl"
+$terms = "fl", "android", "sudo", "", "azure", "t", "a"
 
 foreach ($term in $terms) {
 	$s1 = (./scoop-search.exe $term)
