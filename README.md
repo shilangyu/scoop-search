@@ -22,7 +22,7 @@ Instead of using `scoop-search.exe <term>` you can setup a hook that will run `s
 Add this to your Powershell profile (usually located at `$PROFILE`)
 
 ```ps1
-Invoke-Expression (& { (scoop-search --hook) -join "`n" })
+Invoke-Expression (&scoop-search --hook)
 ```
 
 ## Features
