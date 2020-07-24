@@ -21,6 +21,12 @@ type matchMap = map[string][]match
 func main() {
 	args := parseArgs()
 
+	// print posh hook and exit if requested
+	if args.hook {
+		fmt.Println(poshHook)
+		os.Exit(0)
+	}
+
 	// get buckets path
 	homeDir, err := os.UserHomeDir()
 	checkWith(err, "Could not determine home dir")
