@@ -13,16 +13,16 @@ With Go:
 go get github.com/shilangyu/scoop-search
 ```
 
-Or grab an executable from the [release page](https://github.com/shilangyu/scoop-search/releases) and add it to PATH.
+Or grab an executable from the [release page](https://github.com/shilangyu/scoop-search/releases) and add it to your `PATH`.
 
 ## Hook
 
-Instead of using `scoop-search.exe <term>` you can setup a hook that will run `scoop-search.exe` whenever you use native `scoop search`.
+Instead of using `scoop-search.exe <term>` you can setup a hook that will run `scoop-search.exe` whenever you use native `scoop search`
 
 Add this to your Powershell profile (usually located at `$PROFILE`)
 
 ```ps1
-Invoke-Expression (&scoop-search --hook)
+Invoke-Expression (& { (scoop-search --hook) -join "`n" })
 ```
 
 ## Features
