@@ -27,6 +27,27 @@ Invoke-Expression (&scoop-search --hook)
 
 ## Features
 
-Behaves just like `scoop search`. If any differences are found please open an issue.
+Behaves just like `scoop search` and returns identical output. If any differences are found please open an issue.
 
 **Non-goal**: any additional features unavailable in scoop search
+
+## Benchmarks
+
+Done with [hyperfine](https://github.com/sharkdp/hyperfine). `scoop-search` is on average 26 times faster.
+
+```sh
+❯ hyperfine --warmup 1 'scoop-search google' 'scoop search google'
+Benchmark #1: scoop-search google
+  Time (mean ± σ):     146.1 ms ±   3.1 ms    [User: 2.5 ms, System: 3.6 ms]
+  Range (min … max):   143.5 ms … 155.1 ms    18 runs
+
+Benchmark #2: scoop search google
+  Time (mean ± σ):      4.028 s ±  0.222 s    [User: 1.5 ms, System: 10.4 ms]
+  Range (min … max):    3.866 s …  4.564 s    10 runs
+
+Summary
+  'scoop-search google' ran
+   27.57 ± 1.63 times faster than 'scoop search google'
+```
+
+_ran on AMD Ryzen 5 3600 @ 3.6GHz_
