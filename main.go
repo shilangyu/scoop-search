@@ -70,7 +70,7 @@ func matchingManifests(path string, term string) (res []match) {
 	var parser fastjson.Parser
 
 	for _, file := range files {
-		name := strings.ToLower(file.Name())
+		name := file.Name()
 
 		// its not a manifest, skip
 		if !strings.HasSuffix(name, ".json") {
@@ -84,7 +84,7 @@ func matchingManifests(path string, term string) (res []match) {
 
 		version := string(result.GetStringBytes("version"))
 
-		if strings.Contains(name, term) {
+		if strings.Contains(strings.ToLower(name), term) {
 			// the name matches
 			res = append(res, match{name[:len(name)-5], version, ""})
 		} else {
