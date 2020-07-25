@@ -138,32 +138,47 @@ func matchingManifests(path string, term string) (res []match) {
 
 func printResults(data matchMap) (anyMatches bool) {
 	// sort by bucket names
+	entries := 0
 	sortedKeys := make([]string, 0, len(data))
 	for k := range data {
+		entries += len(data[k])
 		sortedKeys = append(sortedKeys, k)
 	}
 	sort.Strings(sortedKeys)
+
+	// reserve additional space assuming each variable string has length 1. Will save time on initial allocations
+	var display strings.Builder
+	display.Grow((len(sortedKeys)*12 + entries*11))
 
 	for _, k := range sortedKeys {
 		v := data[k]
 
 		if len(v) > 0 {
 			anyMatches = true
-			fmt.Printf("'%s' bucket:\n", k)
+			display.WriteString("'")
+			display.WriteString(k)
+			display.WriteString("' bucket:\n")
 			for _, m := range v {
-				fmt.Printf("    %s (%s)", m.name, m.version)
+				display.WriteString("    ")
+				display.WriteString(m.name)
+				display.WriteString(" (")
+				display.WriteString(m.version)
+				display.WriteString(")")
 				if m.bin != "" {
-					fmt.Printf(" --> includes '%s'", m.bin)
+					display.WriteString(" --> includes '")
+					display.WriteString(m.bin)
+					display.WriteString("'")
 				}
-				fmt.Println()
+				display.WriteString("\n")
 			}
-			fmt.Println()
+			display.WriteString("\n")
 		}
 	}
 
 	if !anyMatches {
-		fmt.Println("No matches found.")
+		display.WriteString("No matches found.")
 	}
 
+	os.Stdout.WriteString(display.String())
 	return
 }
