@@ -33,21 +33,21 @@ Behaves just like `scoop search` and returns [<sub>almost</sub>](https://github.
 
 ## Benchmarks
 
-Done with [hyperfine](https://github.com/sharkdp/hyperfine). `scoop-search` is on average 30 times faster.
+Done with [hyperfine](https://github.com/sharkdp/hyperfine). `scoop-search` is on average 50 times faster.
 
 ```sh
 ❯ hyperfine --warmup 1 'scoop-search google' 'scoop search google'
 Benchmark #1: scoop-search google
-  Time (mean ± σ):     124.9 ms ±   2.2 ms    [User: 2.6 ms, System: 2.8 ms]
-  Range (min … max):   122.8 ms … 131.4 ms    23 runs
+  Time (mean ± σ):      76.1 ms ±   1.9 ms    [User: 0.8 ms, System: 5.8 ms]
+  Range (min … max):    73.4 ms …  82.7 ms    37 runs
 
 Benchmark #2: scoop search google
-  Time (mean ± σ):      3.862 s ±  0.006 s    [User: 7.4 ms, System: 5.2 ms]
-  Range (min … max):    3.852 s …  3.873 s    10 runs
+  Time (mean ± σ):      3.910 s ±  0.015 s    [User: 1.4 ms, System: 7.9 ms]
+  Range (min … max):    3.888 s …  3.928 s    10 runs
 
 Summary
   'scoop-search google' ran
-   30.93 ± 0.55 times faster than 'scoop search google'
+   51.37 ± 1.31 times faster than 'scoop search google'
 ```
 
 _ran on AMD Ryzen 5 3600 @ 3.6GHz_
