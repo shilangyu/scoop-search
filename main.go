@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -10,6 +9,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/valyala/fastjson"
 )
 
 type match struct {
@@ -65,12 +66,9 @@ func matchingManifests(path string, term string) (res []match) {
 	files, err := ioutil.ReadDir(path)
 	check(err)
 
-	for _, file := range files {
-		jsonBuf := struct {
-			Version string
-			Bin     interface{} // can be: nil, string, []string
-		}{}
+	var parser fastjson.Parser
 
+	for _, file := range files {
 		name := file.Name()
 
 		// its not a manifest, skip
@@ -81,35 +79,47 @@ func matchingManifests(path string, term string) (res []match) {
 		// parse relevant data from manifest
 		raw, err := ioutil.ReadFile(path + "\\" + name)
 		check(err)
-		json.Unmarshal(raw, &jsonBuf)
+		result, _ := parser.ParseBytes(raw)
+
+		version := string(result.GetStringBytes("version"))
 
 		if strings.Contains(name, term) {
 			// the name matches
-			res = append(res, match{name[:len(name)-5], jsonBuf.Version, ""})
+			res = append(res, match{name[:len(name)-5], version, ""})
 		} else {
 			// the name did not match, lets see if any binary files do
 			var bins []string
-			if jsonBuf.Bin == nil {
+			bin := result.Get("bin")
+
+			if bin == nil {
 				// no binaries
 				continue
-			} else if val, ok := jsonBuf.Bin.([]interface{}); ok {
-				// an array of binaries
-				for _, bin := range val {
-					if binStr, ok := bin.(string); ok {
-						bins = append(bins, binStr)
+			}
+
+			const badManifestErrMsg = `Cannot parse "bin" attribute in a manifest. This should not happen. Please open an issue about it with steps to reproduce`
+
+			switch bin.Type() {
+			case fastjson.TypeString:
+				bins = append(bins, string(bin.GetStringBytes()))
+			case fastjson.TypeArray:
+				for _, stringOrArray := range bin.GetArray() {
+					switch stringOrArray.Type() {
+					case fastjson.TypeString:
+						bins = append(bins, string(stringOrArray.GetStringBytes()))
+					case fastjson.TypeArray:
+						// unhandled
+					default:
+						log.Fatalln(badManifestErrMsg)
 					}
 				}
-			} else if val, ok := jsonBuf.Bin.(string); ok {
-				// one binary
-				bins = []string{val}
-			} else {
-				log.Fatalln(`Cannot parse "bin" attribute in a manifest. This should not happen. Please open an issue about it with steps to reproduce`)
+			default:
+				log.Fatalln(badManifestErrMsg)
 			}
 
 			for _, bin := range bins {
 				bin = filepath.Base(bin)
 				if strings.Contains(strings.TrimSuffix(bin, filepath.Ext(bin)), term) {
-					res = append(res, match{name[:len(name)-5], jsonBuf.Version, bin})
+					res = append(res, match{name[:len(name)-5], version, bin})
 					break
 				}
 			}
