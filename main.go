@@ -63,13 +63,14 @@ func main() {
 }
 
 func matchingManifests(path string, term string) (res []match) {
+	term = strings.ToLower(term)
 	files, err := ioutil.ReadDir(path)
 	check(err)
 
 	var parser fastjson.Parser
 
 	for _, file := range files {
-		name := file.Name()
+		name := strings.ToLower(file.Name())
 
 		// its not a manifest, skip
 		if !strings.HasSuffix(name, ".json") {
@@ -89,7 +90,7 @@ func matchingManifests(path string, term string) (res []match) {
 		} else {
 			// the name did not match, lets see if any binary files do
 			var bins []string
-			bin := result.Get("bin")
+			bin := result.Get("bin") // can be: nil, string, [](string | []string)
 
 			if bin == nil {
 				// no binaries
@@ -107,7 +108,9 @@ func matchingManifests(path string, term string) (res []match) {
 					case fastjson.TypeString:
 						bins = append(bins, string(stringOrArray.GetStringBytes()))
 					case fastjson.TypeArray:
-						// unhandled
+						// check only first two, the rest are command flags
+						stringArray := stringOrArray.GetArray()
+						bins = append(bins, string(stringArray[0].GetStringBytes()), string(stringArray[1].GetStringBytes()))
 					default:
 						log.Fatalln(badManifestErrMsg)
 					}
@@ -118,7 +121,7 @@ func matchingManifests(path string, term string) (res []match) {
 
 			for _, bin := range bins {
 				bin = filepath.Base(bin)
-				if strings.Contains(strings.TrimSuffix(bin, filepath.Ext(bin)), term) {
+				if strings.Contains(strings.ToLower(strings.TrimSuffix(bin, filepath.Ext(bin))), term) {
 					res = append(res, match{name[:len(name)-5], version, bin})
 					break
 				}
@@ -134,7 +137,6 @@ func matchingManifests(path string, term string) (res []match) {
 }
 
 func printResults(data matchMap) (anyMatches bool) {
-
 	// sort by bucket names
 	sortedKeys := make([]string, 0, len(data))
 	for k := range data {
