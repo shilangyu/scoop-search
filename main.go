@@ -131,7 +131,7 @@ func matchingManifests(path string, term string) (res []match) {
 	}
 
 	sort.SliceStable(res, func(i, j int) bool {
-		// case insensitive comparision where hyphens are ignored
+		// case insensitive comparison where hyphens are ignored
 		return strings.ToLower(strings.ReplaceAll(res[i].name, "-", "")) <= strings.ToLower(strings.ReplaceAll(res[j].name, "-", ""))
 	})
 
