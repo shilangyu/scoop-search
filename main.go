@@ -131,29 +131,9 @@ func matchingManifests(path string, term string) (res []match) {
 	}
 
 	sort.SliceStable(res, func(i, j int) bool {
-		return strings.ToLower(res[i].name) < strings.ToLower(res[j].name)
+		// case insensitive comparision where hyphens are ignored
+		return strings.ToLower(strings.ReplaceAll(res[i].name, "-", "")) <= strings.ToLower(strings.ReplaceAll(res[j].name, "-", ""))
 	})
-
-	// sort.SliceStable(res, func(i, j int) bool {
-	// 	s1, _ := strings.ToLower(res[i].name), len(res[i].name)
-	// 	s2, l2 := strings.ToLower(res[j].name), len(res[j].name)
-
-	// 	for k := range res[i].name {
-	// 		if k == l2 {
-	// 			return true
-	// 		}
-	// 		if s1[k] == '-' && s2[k] != '-' {
-	// 			return true
-	// 		}
-	// 		if s2[k] == '-' && s1[k] != '-' {
-	// 			return false
-	// 		}
-	// 		if s1[k] != s2[k] {
-	// 			return s1[k] < s2[k]
-	// 		}
-	// 	}
-	// 	return true
-	// })
 
 	return
 }
