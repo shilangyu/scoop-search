@@ -27,7 +27,7 @@ Invoke-Expression (&scoop-search --hook)
 
 ## Features
 
-Behaves just like `scoop search` and returns [<sub>almost</sub>](https://github.com/shilangyu/scoop-search/issues/3) identical output. If any differences are found please open an issue.
+Behaves just like `scoop search` and returns identical output. If any differences are found please open an issue.
 
 **Non-goal**: any additional features unavailable in scoop search
 
