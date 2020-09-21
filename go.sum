@@ -2,3 +2,5 @@ github.com/valyala/fastjson v1.5.3 h1:z4Z1Bll4WaXo+FXJoiCdW8ss7sKY2d/jYfE2ZzoT28
 github.com/valyala/fastjson v1.5.3/go.mod h1:CLCAqky6SMuOcxStkYQvblddUtoRxhYMGLrsQns1aXY=
 github.com/valyala/fastjson v1.5.4 h1:r8gpiVwdzDU09NrlN38OyL5dUFpdwGQR5RQEBqY+hLg=
 github.com/valyala/fastjson v1.5.4/go.mod h1:CLCAqky6SMuOcxStkYQvblddUtoRxhYMGLrsQns1aXY=
+github.com/valyala/fastjson v1.6.1 h1:qJs/Kz/HebWzk8LmhOrSm7kdOyJBr1XB+zSkYtEEfQE=
+github.com/valyala/fastjson v1.6.1/go.mod h1:CLCAqky6SMuOcxStkYQvblddUtoRxhYMGLrsQns1aXY=
