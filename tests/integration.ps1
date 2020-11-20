@@ -1,6 +1,9 @@
 go build .
 
-$terms = "fl", "android", "sudo", "", "azure", "t", "a", "P", "G", "as"
+# add a bucket that holds manifests in root
+scoop bucket add github-gh https://github.com/cli/scoop-gh.git
+
+$terms = "fl", "android", "sudo", "", "azure", "t", "a", "P", "G", "as", "gh"
 
 foreach ($term in $terms) {
 	$s1 = (./scoop-search.exe $term)

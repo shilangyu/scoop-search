@@ -48,7 +48,13 @@ func main() {
 	for _, bucket := range buckets {
 		wg.Add(1)
 		go func(file os.FileInfo) {
-			res := matchingManifests(bucketsPath+"\\"+file.Name()+"\\bucket", args.query)
+			// check if $bucketName/bucket exists, if not use $bucketName
+			bucketPath := bucketsPath + "\\" + file.Name()
+			if f, err := os.Stat(bucketPath + "\\bucket"); !os.IsNotExist(err) && f.IsDir() {
+				bucketPath += "\\bucket"
+			}
+
+			res := matchingManifests(bucketPath, args.query)
 			matches.Lock()
 			matches.data[file.Name()] = res
 			matches.Unlock()
