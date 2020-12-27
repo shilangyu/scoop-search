@@ -7,13 +7,9 @@ Fast `scoop search` drop-in replacement 🚀
 
 ## Installation
 
-With Go:
-
 ```sh
-go get github.com/shilangyu/scoop-search
+scoop install https://raw.githubusercontent.com/shilangyu/scoop-search/master/scoop-search.json
 ```
-
-Or grab an executable from the [release page](https://github.com/shilangyu/scoop-search/releases) and add it to your `PATH`.
 
 ## Hook
 
