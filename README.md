@@ -8,7 +8,7 @@ Fast `scoop search` drop-in replacement 🚀
 ## Installation
 
 ```sh
-scoop install https://raw.githubusercontent.com/shilangyu/scoop-search/master/scoop-search.json
+scoop install scoop-search
 ```
 
 ## Hook
