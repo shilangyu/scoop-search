@@ -19,6 +19,21 @@ type match struct {
 
 type matchMap = map[string][]match
 
+// resolves the path to scoop folder
+func scoopHome() (res string) {
+	if value, ok := os.LookupEnv("SCOOP"); ok {
+		res = value
+	} else {
+		var err error
+		res, err = os.UserHomeDir()
+		checkWith(err, "Could not determine home dir")
+
+		res += "\\scoop"
+	}
+
+	return
+}
+
 func main() {
 	args := parseArgs()
 
@@ -29,9 +44,7 @@ func main() {
 	}
 
 	// get buckets path
-	homeDir, err := os.UserHomeDir()
-	checkWith(err, "Could not determine home dir")
-	bucketsPath := homeDir + "\\scoop\\buckets"
+	bucketsPath := scoopHome() + "\\buckets"
 
 	// get specific buckets
 	buckets, err := ioutil.ReadDir(bucketsPath)
