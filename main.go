@@ -104,9 +104,11 @@ func matchingManifests(path string, term string) (res []match) {
 
 		version := string(result.GetStringBytes("version"))
 
-		if strings.Contains(strings.ToLower(name), term) {
+		stem := name[:len(name)-5]
+
+		if strings.Contains(strings.ToLower(stem), term) {
 			// the name matches
-			res = append(res, match{name[:len(name)-5], version, ""})
+			res = append(res, match{stem, version, ""})
 		} else {
 			// the name did not match, lets see if any binary files do
 			var bins []string
@@ -142,7 +144,7 @@ func matchingManifests(path string, term string) (res []match) {
 			for _, bin := range bins {
 				bin = filepath.Base(bin)
 				if strings.Contains(strings.ToLower(strings.TrimSuffix(bin, filepath.Ext(bin))), term) {
-					res = append(res, match{name[:len(name)-5], version, bin})
+					res = append(res, match{stem, version, bin})
 					break
 				}
 			}
