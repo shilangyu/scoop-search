@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -88,7 +87,7 @@ func main() {
 
 func matchingManifests(path string, term string) (res []match) {
 	term = strings.ToLower(term)
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	check(err)
 
 	var parser fastjson.Parser
@@ -102,7 +101,7 @@ func matchingManifests(path string, term string) (res []match) {
 		}
 
 		// parse relevant data from manifest
-		raw, err := ioutil.ReadFile(path + "\\" + name)
+		raw, err := os.ReadFile(path + "\\" + name)
 		check(err)
 		result, _ := parser.ParseBytes(raw)
 
