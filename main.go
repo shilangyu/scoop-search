@@ -47,7 +47,7 @@ func main() {
 	bucketsPath := scoopHome() + "\\buckets"
 
 	// get specific buckets
-	buckets, err := ioutil.ReadDir(bucketsPath)
+	buckets, err := os.ReadDir(bucketsPath)
 	checkWith(err, "Scoop folder does not exist")
 
 	// start workers that will find matching manifests
@@ -59,8 +59,12 @@ func main() {
 	var wg sync.WaitGroup
 
 	for _, bucket := range buckets {
+		if !bucket.IsDir() {
+			continue
+		}
+
 		wg.Add(1)
-		go func(file os.FileInfo) {
+		go func(file os.DirEntry) {
 			// check if $bucketName/bucket exists, if not use $bucketName
 			bucketPath := bucketsPath + "\\" + file.Name()
 			if f, err := os.Stat(bucketPath + "\\bucket"); !os.IsNotExist(err) && f.IsDir() {
