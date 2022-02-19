@@ -132,7 +132,10 @@ func matchingManifests(path string, term string) (res []match) {
 					case fastjson.TypeArray:
 						// check only first two, the rest are command flags
 						stringArray := stringOrArray.GetArray()
-						bins = append(bins, string(stringArray[0].GetStringBytes()), string(stringArray[1].GetStringBytes()))
+						bins = append(bins, string(stringArray[0].GetStringBytes()))
+						if len(stringArray) > 1 {
+							bins = append(bins, string(stringArray[1].GetStringBytes()))
+						}
 					default:
 						log.Fatalln(badManifestErrMsg)
 					}
