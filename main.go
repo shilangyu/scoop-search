@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -47,7 +46,7 @@ func main() {
 	bucketsPath := scoopHome() + "\\buckets"
 
 	// get specific buckets
-	buckets, err := ioutil.ReadDir(bucketsPath)
+	buckets, err := os.ReadDir(bucketsPath)
 	checkWith(err, "Scoop folder does not exist")
 
 	// start workers that will find matching manifests
@@ -59,8 +58,12 @@ func main() {
 	var wg sync.WaitGroup
 
 	for _, bucket := range buckets {
+		if !bucket.IsDir() {
+			continue
+		}
+
 		wg.Add(1)
-		go func(file os.FileInfo) {
+		go func(file os.DirEntry) {
 			// check if $bucketName/bucket exists, if not use $bucketName
 			bucketPath := bucketsPath + "\\" + file.Name()
 			if f, err := os.Stat(bucketPath + "\\bucket"); !os.IsNotExist(err) && f.IsDir() {
@@ -84,7 +87,7 @@ func main() {
 
 func matchingManifests(path string, term string) (res []match) {
 	term = strings.ToLower(term)
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	check(err)
 
 	var parser fastjson.Parser
@@ -98,7 +101,7 @@ func matchingManifests(path string, term string) (res []match) {
 		}
 
 		// parse relevant data from manifest
-		raw, err := ioutil.ReadFile(path + "\\" + name)
+		raw, err := os.ReadFile(path + "\\" + name)
 		check(err)
 		result, _ := parser.ParseBytes(raw)
 
@@ -132,7 +135,10 @@ func matchingManifests(path string, term string) (res []match) {
 					case fastjson.TypeArray:
 						// check only first two, the rest are command flags
 						stringArray := stringOrArray.GetArray()
-						bins = append(bins, string(stringArray[0].GetStringBytes()), string(stringArray[1].GetStringBytes()))
+						bins = append(bins, string(stringArray[0].GetStringBytes()))
+						if len(stringArray) > 1 {
+							bins = append(bins, string(stringArray[1].GetStringBytes()))
+						}
 					default:
 						log.Fatalln(badManifestErrMsg)
 					}
