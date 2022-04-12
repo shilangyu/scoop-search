@@ -10,6 +10,9 @@ import (
 	"sync"
 
 	"github.com/valyala/fastjson"
+	"github.com/dimchansky/utfbom"
+	"bufio"
+	"io/ioutil"
 )
 
 type match struct {
@@ -101,7 +104,10 @@ func matchingManifests(path string, term string) (res []match) {
 		}
 
 		// parse relevant data from manifest
-		raw, err := os.ReadFile(path + "\\" + name)
+		file, err := os.Open(path + "\\" + name)
+		check(err)
+		defer file.Close()
+		raw, err :=  ioutil.ReadAll(utfbom.SkipOnly(bufio.NewReader(file)))
 		check(err)
 		result, _ := parser.ParseBytes(raw)
 
