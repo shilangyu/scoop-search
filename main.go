@@ -81,6 +81,11 @@ func main() {
 
 	// print results and exit with status code
 	if !printResults(matches.data) {
+		var display strings.Builder
+		display.WriteString("No matches found.\n")
+		display.WriteString("Try looking on ScoopSearch: https://scoopsearch.github.io/#/apps?q=")
+		display.WriteString(args.query)
+		os.Stdout.WriteString(display.String())
 		os.Exit(1)
 	}
 }
@@ -204,10 +209,9 @@ func printResults(data matchMap) (anyMatches bool) {
 		}
 	}
 
-	if !anyMatches {
-		display.WriteString("No matches found.")
+	if anyMatches {
+		os.Stdout.WriteString(display.String())	
 	}
 
-	os.Stdout.WriteString(display.String())
 	return
 }
