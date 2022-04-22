@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -88,6 +89,13 @@ func main() {
 func matchingManifests(path string, term string) (res []match) {
 	term = strings.ToLower(term)
 	files, err := os.ReadDir(path)
+	useRegexp := strings.HasPrefix(term, "/") && strings.HasSuffix(term, "/")
+	var re *regexp.Regexp
+	if useRegexp {
+		term = strings.TrimPrefix(term, "/")
+		term = strings.TrimSuffix(term, "/")
+		re = regexp.MustCompile(term)
+	}
 	check(err)
 
 	var parser fastjson.Parser
@@ -109,7 +117,7 @@ func matchingManifests(path string, term string) (res []match) {
 
 		stem := name[:len(name)-5]
 
-		if strings.Contains(strings.ToLower(stem), term) {
+		if (!useRegexp && strings.Contains(strings.ToLower(stem), term)) || (useRegexp && re.MatchString(strings.ToLower(stem))) {
 			// the name matches
 			res = append(res, match{stem, version, ""})
 		} else {
@@ -149,7 +157,8 @@ func matchingManifests(path string, term string) (res []match) {
 
 			for _, bin := range bins {
 				bin = filepath.Base(bin)
-				if strings.Contains(strings.ToLower(strings.TrimSuffix(bin, filepath.Ext(bin))), term) {
+				binTrimmed := strings.TrimSuffix(bin, filepath.Ext(bin))
+				if (!useRegexp && strings.Contains(binTrimmed, term)) || (useRegexp && re.MatchString(binTrimmed)) {
 					res = append(res, match{stem, version, bin})
 					break
 				}
