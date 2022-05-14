@@ -101,6 +101,7 @@ func githubRatelimitReached() bool {
 
 	response, err := http.Get("https://api.github.com/rate_limit")
 	check(err)
+	defer response.Body.Close()
 
 	raw, err := ioutil.ReadAll(response.Body)
 	check(err)
@@ -163,6 +164,7 @@ func searchRemote(bucket string, term string) (res []match, hasReachedApiLimit b
 
 	response, err := http.Get(apiLink)
 	check(err)
+	defer response.Body.Close()
 
 	requestsLeft, err := strconv.Atoi(response.Header.Get("X-RateLimit-Remaining"))
 	check(err)
