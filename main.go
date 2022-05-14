@@ -120,13 +120,6 @@ func searchRemoteAll(term string) matchMap {
 
 	result, _ := parser.ParseBytes(raw)
 	object, _ := result.Object()
-	var buckets []string
-	object.Visit(func(k []byte, v *fastjson.Value) {
-		if _, err := os.Stat(scoopHome() + "\\buckets\\" + string(k)); os.IsNotExist(err) {
-			buckets = append(buckets, string(k))
-		}
-	})
-
 	matches := struct {
 		sync.Mutex
 		data matchMap
@@ -134,31 +127,29 @@ func searchRemoteAll(term string) matchMap {
 	matches.data = make(matchMap)
 	var wg sync.WaitGroup
 	var hasReachedApiLimit bool = false
-	for _, bucket := range buckets {
-		if !hasReachedApiLimit {
-			wg.Add(1)
-			go func(b string) {
-				var res []match
-				res, hasReachedApiLimit = searchRemote(b, term)
-				matches.Lock()
-				matches.data[b] = res
-				matches.Unlock()
-				wg.Done()
-			}(bucket)
+	object.Visit(func(k []byte, v *fastjson.Value) {
+		if _, err := os.Stat(scoopHome() + "\\buckets\\" + string(k)); os.IsNotExist(err) {
+			if !hasReachedApiLimit {
+				wg.Add(1)
+				go func(b string, u string) {
+					var res []match
+					res, hasReachedApiLimit = searchRemote(u, term)
+					matches.Lock()
+					matches.data[b] = res
+					matches.Unlock()
+					wg.Done()
+				}(string(k), string(v.GetStringBytes()))
+			}
+
 		}
-	}
+	})
 	wg.Wait()
 	return matches.data
 }
 
-func searchRemote(bucket string, term string) (res []match, hasReachedApiLimit bool) {
+func searchRemote(bucketURL string, term string) (res []match, hasReachedApiLimit bool) {
 	var parser fastjson.Parser
 
-	raw, err := os.ReadFile(scoopHome() + "\\apps\\scoop\\current\\buckets.json")
-	check(err)
-
-	result, _ := parser.ParseBytes(raw)
-	bucketURL := string(result.GetStringBytes(bucket))
 	bucketSplit := strings.Split(bucketURL, "/")
 	apiLink := "https://api.github.com/repos/" + bucketSplit[len(bucketSplit)-2] + "/" + bucketSplit[len(bucketSplit)-1] + "/git/trees/HEAD?recursive=1"
 
@@ -170,7 +161,7 @@ func searchRemote(bucket string, term string) (res []match, hasReachedApiLimit b
 	check(err)
 	hasReachedApiLimit = requestsLeft == 0
 
-	raw, err = ioutil.ReadAll(response.Body)
+	raw, err := ioutil.ReadAll(response.Body)
 	check(err)
 
 	json, _ := parser.ParseBytes(raw)
