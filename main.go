@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -120,8 +121,7 @@ func searchRemoteAll(term string) matchMap {
 	object, _ := result.Object()
 	var buckets []string
 	object.Visit(func(k []byte, v *fastjson.Value) {
-		_, err := os.Stat(scoopHome() + "\\buckets\\" + string(k))
-		if os.IsNotExist(err) {
+		if _, err := os.Stat(scoopHome() + "\\buckets\\" + string(k)); os.IsNotExist(err) {
 			buckets = append(buckets, string(k))
 		}
 	})
@@ -132,21 +132,25 @@ func searchRemoteAll(term string) matchMap {
 	}{}
 	matches.data = make(matchMap)
 	var wg sync.WaitGroup
+	var hasReachedApiLimit bool = false
 	for _, bucket := range buckets {
-		wg.Add(1)
-		go func(b string) {
-			res := searchRemote(b, term)
-			matches.Lock()
-			matches.data[b] = res
-			matches.Unlock()
-			wg.Done()
-		}(bucket)
+		if !hasReachedApiLimit {
+			wg.Add(1)
+			go func(b string) {
+				var res []match
+				res, hasReachedApiLimit = searchRemote(b, term)
+				matches.Lock()
+				matches.data[b] = res
+				matches.Unlock()
+				wg.Done()
+			}(bucket)
+		}
 	}
 	wg.Wait()
 	return matches.data
 }
 
-func searchRemote(bucket string, term string) []match {
+func searchRemote(bucket string, term string) (res []match, hasReachedApiLimit bool) {
 	var parser fastjson.Parser
 
 	raw, err := os.ReadFile(scoopHome() + "\\apps\\scoop\\current\\buckets.json")
@@ -159,6 +163,10 @@ func searchRemote(bucket string, term string) []match {
 
 	response, err := http.Get(apiLink)
 	check(err)
+
+	requestsLeft, err := strconv.Atoi(response.Header.Get("X-RateLimit-Remaining"))
+	check(err)
+	hasReachedApiLimit = requestsLeft == 0
 
 	raw, err = ioutil.ReadAll(response.Body)
 	check(err)
@@ -187,7 +195,8 @@ func searchRemote(bucket string, term string) []match {
 		}(file.GetStringBytes("path"))
 	}
 	wg.Wait()
-	return matches.data
+	res = matches.data
+	return
 }
 
 func matchingManifests(path string, term string) (res []match) {
