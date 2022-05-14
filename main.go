@@ -100,7 +100,14 @@ func githubRatelimitReached() bool {
 	var parser fastjson.Parser
 
 	response, err := http.Get("https://api.github.com/rate_limit")
-	check(err)
+	if err != nil {
+		if strings.Contains(err.Error(), "no such host") {
+			// no internet connection
+			return true
+		} else {
+			check(err)
+		}
+	}
 	defer response.Body.Close()
 
 	raw, err := ioutil.ReadAll(response.Body)
