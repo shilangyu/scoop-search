@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -80,9 +83,111 @@ func main() {
 	wg.Wait()
 
 	// print results and exit with status code
-	if !printResults(matches.data) {
+	var hasResult bool
+	hasResult = printResults(matches.data, false)
+	if !hasResult && !githubRatelimitReached() {
+		hasResult = printResults(searchRemoteAll(args.query), true)
+	}
+
+	if !hasResult {
+		fmt.Println("No matches found.")
 		os.Exit(1)
 	}
+}
+
+func githubRatelimitReached() bool {
+	var parser fastjson.Parser
+
+	response, err := http.Get("https://api.github.com/rate_limit")
+	check(err)
+
+	raw, err := ioutil.ReadAll(response.Body)
+	check(err)
+
+	parse, _ := parser.ParseBytes(raw)
+	json, _ := parse.Object()
+
+	return json.Get("resources").Get("core").GetInt("limit") == 0
+}
+
+func searchRemoteAll(term string) matchMap {
+	var parser fastjson.Parser
+
+	raw, err := os.ReadFile(scoopHome() + "\\apps\\scoop\\current\\buckets.json")
+	check(err)
+
+	result, _ := parser.ParseBytes(raw)
+	object, _ := result.Object()
+	var buckets []string
+	object.Visit(func(k []byte, v *fastjson.Value) {
+		_, err := os.Stat(scoopHome() + "\\buckets\\" + string(k))
+		if os.IsNotExist(err) {
+			buckets = append(buckets, string(k))
+		}
+	})
+
+	matches := struct {
+		sync.Mutex
+		data matchMap
+	}{}
+	matches.data = make(matchMap)
+	var wg sync.WaitGroup
+	for _, bucket := range buckets {
+		wg.Add(1)
+		go func(b string) {
+			res := searchRemote(b, term)
+			matches.Lock()
+			matches.data[b] = res
+			matches.Unlock()
+			wg.Done()
+		}(bucket)
+	}
+	wg.Wait()
+	return matches.data
+}
+
+func searchRemote(bucket string, term string) []match {
+	var parser fastjson.Parser
+
+	raw, err := os.ReadFile(scoopHome() + "\\apps\\scoop\\current\\buckets.json")
+	check(err)
+
+	result, _ := parser.ParseBytes(raw)
+	bucketURL := string(result.GetStringBytes(bucket))
+	bucketSplit := strings.Split(bucketURL, "/")
+	apiLink := "https://api.github.com/repos/" + bucketSplit[len(bucketSplit)-2] + "/" + bucketSplit[len(bucketSplit)-1] + "/git/trees/HEAD?recursive=1"
+
+	response, err := http.Get(apiLink)
+	check(err)
+
+	raw, err = ioutil.ReadAll(response.Body)
+	check(err)
+
+	json, _ := parser.ParseBytes(raw)
+	fileTree := json.GetArray("tree")
+
+	regex := regexp.MustCompile("(?i)^(?:bucket/)?(.*" + term + ".*)\\.json$")
+
+	matches := struct {
+		sync.Mutex
+		data []match
+	}{}
+	var wg sync.WaitGroup
+
+	for _, file := range fileTree {
+		wg.Add(1)
+		go func(path []byte) {
+			matching := regex.FindSubmatch(path)
+			if len(matching) > 1 {
+				matches.Lock()
+				matches.data = append(matches.data, match{name: string(matching[1]), version: "", bin: ""})
+				matches.Unlock()
+			}
+			wg.Done()
+		}(file.GetStringBytes("path"))
+	}
+	wg.Wait()
+	return matches.data
 }
 
 func matchingManifests(path string, term string) (res []match) {
@@ -165,7 +270,7 @@ func matchingManifests(path string, term string) (res []match) {
 	return
 }
 
-func printResults(data matchMap) (anyMatches bool) {
+func printResults(data matchMap, fromKnownBucket bool) (anyMatches bool) {
 	// sort by bucket names
 	entries := 0
 	sortedKeys := make([]string, 0, len(data))
@@ -184,15 +289,37 @@ func printResults(data matchMap) (anyMatches bool) {
 
 		if len(v) > 0 {
 			anyMatches = true
+		}
+	}
+
+	if fromKnownBucket && anyMatches {
+		fmt.Println("Results from other known buckets...")
+		fmt.Println("(add them using 'scoop bucket add <name>')")
+		fmt.Println()
+	}
+
+	for _, k := range sortedKeys {
+		v := data[k]
+
+		if len(v) > 0 {
 			display.WriteString("'")
 			display.WriteString(k)
-			display.WriteString("' bucket:\n")
+			display.WriteString("' bucket")
+			if fromKnownBucket {
+				display.WriteString(" (install using 'scoop install ")
+				display.WriteString(k)
+				display.WriteString("/<app>'):\n")
+			} else {
+				display.WriteString(":\n")
+			}
 			for _, m := range v {
 				display.WriteString("    ")
 				display.WriteString(m.name)
-				display.WriteString(" (")
-				display.WriteString(m.version)
-				display.WriteString(")")
+				if !fromKnownBucket {
+					display.WriteString(" (")
+					display.WriteString(m.version)
+					display.WriteString(")")
+				}
 				if m.bin != "" {
 					display.WriteString(" --> includes '")
 					display.WriteString(m.bin)
@@ -202,10 +329,6 @@ func printResults(data matchMap) (anyMatches bool) {
 			}
 			display.WriteString("\n")
 		}
-	}
-
-	if !anyMatches {
-		display.WriteString("No matches found.")
 	}
 
 	os.Stdout.WriteString(display.String())
