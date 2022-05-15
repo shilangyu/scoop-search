@@ -12,6 +12,18 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows
+            arch: amd64
+            output: scoop-search.exe
+          - target: windows
+            arch: 386
+            output: scoop-search.exe
+
     steps:
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
@@ -24,8 +36,14 @@ jobs:
       - name: Get dependencies
         run: go get -v -t -d ./...
 
-      - name: Build for Windows
-        run: GOOS=windows GOARCH=amd64 go build -o scoop-search.exe -v .
+      - name: Build
+        run: GOOS=${{ matrix.target }} GOARCH=${{ matrix.arch }} go build -o scoop-search.exe -v .
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ matrix.target }}-${{ matrix.arch }}-${{ matrix.output }}
+          path: scoop-search.exe
 
       - name: Release
         uses: softprops/action-gh-release@v1
