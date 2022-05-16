@@ -17,12 +17,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: windows
-            arch: amd64
+          - arch: amd64
             output: scoop-search.exe
-          - target: windows
-            arch: 386
-            output: scoop-search.exe
+          - arch: 386
+            output: scoop-search-x86.exe
 
     steps:
       - name: Set up Go 1.x
@@ -36,20 +34,14 @@ jobs:
       - name: Get dependencies
         run: go get -v -t -d ./...
 
-      - name: Build
-        run: GOOS=${{ matrix.target }} GOARCH=${{ matrix.arch }} go build -o scoop-search.exe -v .
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v1
-        with:
-          name: ${{ matrix.target }}-${{ matrix.arch }}-${{ matrix.output }}
-          path: scoop-search.exe
+      - name: Build for Windows
+        run: GOOS=windows GOARCH=${{ matrix.arch }} go build -o ${{ matrix.output }} -v .
 
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/') && github.repository == 'shilangyu/scoop-search'
         with:
           files: |
-            scoop-search.exe
+            ${{ matrix.output }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
