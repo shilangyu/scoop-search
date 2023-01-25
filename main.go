@@ -34,12 +34,16 @@ func scoopHome() (res string) {
 			configHome = home + "\\.config"
 		}
 
-		path := configHome + "\\scoop\\config.json"
-		if content, err := os.ReadFile(path); err == nil {
+		configPath := configHome + "\\scoop\\config.json"
+		if content, err := os.ReadFile(configPath); err == nil {
 			var parser fastjson.Parser
 			config, _ := parser.ParseBytes(content)
 			res = string(config.GetStringBytes("root_path"))
-		} else {
+		}
+
+		// installing with default directory doesn't have `SCOOP`
+		// and `root_path` either
+		if res == "" {
 			res = home + "\\scoop"
 		}
 	}
