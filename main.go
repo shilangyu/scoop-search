@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -140,8 +139,6 @@ func matchingManifests(path string, term string) (res []match) {
 				continue
 			}
 
-			const badManifestErrMsg = `Cannot parse "bin" attribute in a manifest. This should not happen. Please open an issue about it with steps to reproduce`
-
 			switch bin.Type() {
 			case fastjson.TypeString:
 				bins = append(bins, string(bin.GetStringBytes()))
@@ -157,12 +154,8 @@ func matchingManifests(path string, term string) (res []match) {
 						if len(stringArray) > 1 {
 							bins = append(bins, string(stringArray[1].GetStringBytes()))
 						}
-					default:
-						log.Fatalln(badManifestErrMsg)
 					}
 				}
-			default:
-				log.Fatalln(badManifestErrMsg)
 			}
 
 			for _, bin := range bins {
