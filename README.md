@@ -11,7 +11,7 @@ Fast `scoop search` drop-in replacement 🚀
 scoop install scoop-search
 ```
 
-## Hook
+## PowerShell hook
 
 Instead of using `scoop-search.exe <term>` you can setup a hook that will run `scoop-search.exe` whenever you use native `scoop search`
 
@@ -19,6 +19,28 @@ Add this to your Powershell profile (usually located at `$PROFILE`)
 
 ```ps1
 Invoke-Expression (&scoop-search --hook)
+```
+
+## CMD.exe wrapper
+
+If you use `cmd.exe` you can use a wrapper script to do the same. Name this `scoop.cmd` and add it to
+a directory in your `%PATH%`
+
+```
+@echo off
+
+if "%1" == "search" (
+    call :search_subroutine %*
+) else (
+    powershell scoop.ps1 %*
+)
+goto :eof
+
+:search_subroutine
+set "args=%*"
+set "newargs=%args:* =%"
+scoop-search.exe %newargs%
+goto :eof
 ```
 
 ## Features
