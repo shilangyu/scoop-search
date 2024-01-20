@@ -6,7 +6,7 @@ const testing = std.testing;
 fn homeDirOwned(allocator: std.mem.Allocator) !?[]const u8 {
     const dir = std.process.getEnvVarOwned(allocator, "USERPROFILE") catch |err| switch (err) {
         error.EnvironmentVariableNotFound => return null,
-        else => return err,
+        else => |e| return e,
     };
 
     if (dir.len == 0) {
@@ -24,7 +24,7 @@ fn scoopConfigFileOwned(allocator: std.mem.Allocator, homeDir: ?[]const u8) ![]c
             try utils.concatOwned(allocator, dir, "\\.config")
         else
             return error.MissingHomeDir,
-        else => return err,
+        else => |e| return e,
     };
     defer allocator.free(systemConfig);
 
@@ -65,7 +65,7 @@ pub fn scoopHomeOwned(allocator: std.mem.Allocator) ![]const u8 {
             else
                 return error.MissingHomeDir;
         },
-        else => return err,
+        else => |e| return e,
     };
 }
 
