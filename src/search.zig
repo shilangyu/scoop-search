@@ -114,13 +114,13 @@ pub fn searchBucket(state: SearchState) !void {
         const content = try utils.readFileRealloc(allocator, manifest, &buffer);
 
         const Manifest = struct {
-            version: []const u8 = "",
-            bin: std.json.Value, // can be: null, string, [](string | []string)
+            version: ?[]const u8 = null,
+            bin: ?std.json.Value = null, // can be: null, string, [](string | []string)
         };
 
-        const parsed = try std.json.parseFromSlice(Manifest, allocator, content, .{});
+        const parsed = try std.json.parseFromSlice(Manifest, allocator, content, .{ .ignore_unknown_fields = true });
         defer parsed.deinit();
-        const version = parsed.value.version;
+        const version = parsed.value.version orelse "";
 
         const lowerStem = try std.ascii.allocLowerString(allocator, stem);
         defer allocator.free(lowerStem);
@@ -129,7 +129,7 @@ pub fn searchBucket(state: SearchState) !void {
             try matches.append(try SearchMatch.init(allocator, stem, version, null));
         } else {
             // the name did not match, lets see if any binary files do
-            switch (parsed.value.bin) {
+            switch (parsed.value.bin orelse .null) {
                 .string => |bin| {
                     _ = try checkBin(allocator, bin, state.query, stem, version, &matches);
                 },

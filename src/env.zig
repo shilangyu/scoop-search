@@ -48,9 +48,9 @@ pub fn scoopHomeOwned(allocator: std.mem.Allocator) ![]const u8 {
                 if (utils.readFileOwned(allocator, configFile) catch null) |config| {
                     defer allocator.free(config);
 
-                    const parsed = try std.json.parseFromSlice(struct { root_path: []const u8 = "" }, allocator, config, .{});
+                    const parsed = try std.json.parseFromSlice(struct { root_path: ?[]const u8 = null }, allocator, config, .{ .ignore_unknown_fields = true });
                     defer parsed.deinit();
-                    const rootPath = parsed.value.root_path;
+                    const rootPath = parsed.value.root_path orelse "";
 
                     if (rootPath.len != 0) {
                         return allocator.dupe(u8, rootPath);
