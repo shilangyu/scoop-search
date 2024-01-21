@@ -21,14 +21,14 @@ fn homeDirOwned(allocator: std.mem.Allocator) !?[]const u8 {
 fn scoopConfigFileOwned(allocator: std.mem.Allocator, homeDir: ?[]const u8) ![]const u8 {
     const systemConfig = std.process.getEnvVarOwned(allocator, "XDG_CONFIG_HOME") catch |err| switch (err) {
         error.EnvironmentVariableNotFound => if (homeDir) |dir|
-            try utils.concatOwned(allocator, dir, "\\.config")
+            try utils.concatOwned(allocator, dir, "/.config")
         else
             return error.MissingHomeDir,
         else => |e| return e,
     };
     defer allocator.free(systemConfig);
 
-    return try utils.concatOwned(allocator, systemConfig, "\\scoop\\config.json");
+    return try utils.concatOwned(allocator, systemConfig, "/scoop/config.json");
 }
 
 /// Returns the path to the root of scoop. Logic follows Scoop's logic for resolving the home directory.
@@ -61,7 +61,7 @@ pub fn scoopHomeOwned(allocator: std.mem.Allocator) ![]const u8 {
             // installing with default directory doesn't have `SCOOP`
             // and `root_path` either
             return if (homeDir) |dir|
-                try utils.concatOwned(allocator, dir, "\\scoop")
+                try utils.concatOwned(allocator, dir, "/scoop")
             else
                 return error.MissingHomeDir;
         },
@@ -85,7 +85,7 @@ test "homeDirOwned" {
         defer {
             if (dir) |d| testing.allocator.free(d);
         }
-        try testing.expectEqual(@as(?[]const u8, "\\here"), dir);
+        try testing.expectEqual(@as(?[]const u8, "/here"), dir);
     }
 }
 
@@ -96,16 +96,16 @@ test "scoopConfigFileOwned" {
     }
     {
         // no env var + home dir
-        const path = try scoopConfigFileOwned(testing.allocator, "\\here");
+        const path = try scoopConfigFileOwned(testing.allocator, "/here");
         defer testing.allocator.free(path);
-        try testing.expectEqual(@as([]const u8, "\\here\\.config\\scoop\\config.json"), path);
+        try testing.expectEqual(@as([]const u8, "/here/.config/scoop/config.json"), path);
     }
     {
         // env var
         // TODO: mock env var
         const path = try scoopConfigFileOwned(testing.allocator, null);
         defer testing.allocator.free(path);
-        try testing.expectEqual(@as([]const u8, "\\here\\scoop\\config.json"), path);
+        try testing.expectEqual(@as([]const u8, "/here/scoop/config.json"), path);
     }
 }
 
@@ -115,20 +115,20 @@ test "scoopHomeOwned" {
         // TODO: mock config file
         const dir = try scoopHomeOwned(testing.allocator);
         defer testing.allocator.free(dir);
-        try testing.expectEqual(@as([]const u8, "\\here"), dir);
+        try testing.expectEqual(@as([]const u8, "/here"), dir);
     }
     {
         // no env var + no config file
         // TODO: mock env var
         const dir = try scoopHomeOwned(testing.allocator);
         defer testing.allocator.free(dir);
-        try testing.expectEqual(@as([]const u8, "\\home\\here"), dir);
+        try testing.expectEqual(@as([]const u8, "/home/here"), dir);
     }
     {
         // env var
         // TODO: mock env var
         const dir = try scoopHomeOwned(testing.allocator);
         defer testing.allocator.free(dir);
-        try testing.expectEqual(@as([]const u8, "\\here"), dir);
+        try testing.expectEqual(@as([]const u8, "/here"), dir);
     }
 }

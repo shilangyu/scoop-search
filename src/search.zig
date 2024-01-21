@@ -65,7 +65,7 @@ pub const SearchState = struct {
 
 fn packagesDir(allocator: std.mem.Allocator, bucketBase: []const u8) !std.fs.IterableDir {
     // check if $bucketName/bucket exists, if not use $bucketName
-    const packagesPath = try utils.concatOwned(allocator, bucketBase, "\\bucket");
+    const packagesPath = try utils.concatOwned(allocator, bucketBase, "/bucket");
     defer allocator.free(packagesPath);
 
     var packages = std.fs.openIterableDirAbsolute(packagesPath, .{}) catch
@@ -118,7 +118,8 @@ pub fn searchBucket(state: SearchState) !void {
             bin: ?std.json.Value = null, // can be: null, string, [](string | []string)
         };
 
-        const parsed = try std.json.parseFromSlice(Manifest, allocator, content, .{ .ignore_unknown_fields = true });
+        // skip invalid manifests
+        const parsed = std.json.parseFromSlice(Manifest, allocator, content, .{ .ignore_unknown_fields = true }) catch continue;
         defer parsed.deinit();
         const version = parsed.value.version orelse "";
 

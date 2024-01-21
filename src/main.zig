@@ -33,7 +33,7 @@ pub fn main() !void {
     defer allocator.free(scoopHome);
 
     // get buckets path
-    const bucketsPath = try utils.concatOwned(allocator, scoopHome, "\\buckets");
+    const bucketsPath = try utils.concatOwned(allocator, scoopHome, "/buckets");
     defer allocator.free(bucketsPath);
 
     var bucketsDir = try std.fs.openIterableDirAbsolute(bucketsPath, .{});
@@ -55,7 +55,7 @@ pub fn main() !void {
             continue;
         }
 
-        const bucketBase = try std.mem.concat(allocator, u8, &[_][]const u8{ bucketsPath, "\\", f.name });
+        const bucketBase = try std.mem.concat(allocator, u8, &[_][]const u8{ bucketsPath, "/", f.name });
 
         // start threads to look for results
         const handle = try std.Thread.spawn(.{}, search.searchBucket, .{search.SearchState{ .results = &results, .resultsMutex = &resultsMutex, .bucketBase = bucketBase, .query = query }});
