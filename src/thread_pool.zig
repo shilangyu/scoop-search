@@ -5,14 +5,14 @@ const builtin = @import("builtin");
 pub fn ThreadPool(comptime T: type) type {
     return struct {
         const Self = @This();
-        const Worker = struct { thread: std.Thread, state: T };
 
         mutex: std.Thread.Mutex = .{},
         cond: std.Thread.Condition = .{},
         run_queue: RunQueue = .{},
         is_running: bool = true,
         allocator: std.mem.Allocator,
-        workers: []Worker,
+        threads: []std.Thread,
+        states: std.ArrayList(T),
 
         const RunQueue = std.SinglyLinkedList(Runnable);
         const Runnable = struct {
@@ -26,39 +26,50 @@ pub fn ThreadPool(comptime T: type) type {
             n_jobs: ?u32 = null,
         };
 
-        pub fn init(pool: *Self, options: Options, comptime create_state: *const fn () T) !void {
+        pub fn init(pool: *Self, options: Options, comptime create_state: *const fn () std.mem.Allocator.Error!T) !void {
             const allocator = options.allocator;
+
+            const thread_count = options.n_jobs orelse @max(1, std.Thread.getCpuCount() catch 1);
 
             pool.* = .{
                 .allocator = allocator,
-                .workers = &[_]Worker{},
+                .threads = &[_]std.Thread{},
+                .states = try std.ArrayList(T).initCapacity(allocator, thread_count),
             };
 
             if (builtin.single_threaded) {
                 return;
             }
 
-            const thread_count = options.n_jobs orelse @max(1, std.Thread.getCpuCount() catch 1);
-            pool.workers = try allocator.alloc(Worker, thread_count);
-            errdefer allocator.free(pool.workers);
+            pool.threads = try allocator.alloc(std.Thread, thread_count);
+            errdefer allocator.free(pool.threads);
 
-            // kill and join any workers we spawned previously on error.
+            // kill and join any threads we spawned previously on error.
             var spawned: usize = 0;
-            errdefer pool.join(spawned);
+            errdefer {
+                var states = pool.join(spawned);
+                for (states.items) |*e| e.deinit();
+                states.deinit();
+            }
 
-            for (pool.workers) |*wrker| {
-                wrker.*.state = create_state();
-                wrker.*.thread = try std.Thread.spawn(.{}, worker, .{ pool, &wrker.state });
+            for (pool.threads) |*thread| {
+                try pool.states.append(try create_state());
+                thread.* = try std.Thread.spawn(.{}, worker, .{
+                    pool,
+                    // pointer shall not move after `append` above; we allocated needed capacity at the start
+                    &pool.states.items[pool.states.items.len - 1],
+                });
                 spawned += 1;
             }
         }
 
-        pub fn deinit(pool: *Self) void {
-            pool.join(pool.workers.len); // kill and join all threads.
+        pub fn deinit(pool: *Self) std.ArrayList(T) {
+            const states = pool.join(pool.threads.len); // kill and join all threads.
             pool.* = undefined;
+            return states;
         }
 
-        fn join(pool: *Self, spawned: usize) void {
+        fn join(pool: *Self, spawned: usize) std.ArrayList(T) {
             if (builtin.single_threaded) {
                 return;
             }
@@ -74,12 +85,12 @@ pub fn ThreadPool(comptime T: type) type {
             // wake up any sleeping threads (this can be done outside the mutex)
             // then wait for all the threads we know are spawned to complete.
             pool.cond.broadcast();
-            for (pool.workers[0..spawned]) |*wrker| {
-                wrker.thread.join();
-                wrker.state.deinit();
+            for (pool.threads[0..spawned]) |*thread| {
+                thread.join();
             }
 
-            pool.allocator.free(pool.workers);
+            pool.allocator.free(pool.threads);
+            return pool.states;
         }
 
         pub fn spawn(pool: *Self, comptime func: anytype, args: anytype) !void {
