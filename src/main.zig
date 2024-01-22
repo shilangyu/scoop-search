@@ -7,10 +7,13 @@ const search = @import("search.zig");
 
 pub fn main() !void {
     // TODO: error messages
-    // TODO: replace allocator
+    // TODO: replace allocator, maybe https://github.com/kprotty/zap/blob/54cd494257915e6c126a0b70f95789b669b49b96/benchmarks/zig/async.zig#L60
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer _ = gpa.deinit();
+
+    var tp: std.Thread.Pool = undefined;
+    try tp.init(.{ .allocator = allocator });
 
     var args = try ParsedArgs.parse(allocator);
     defer args.deinit();
@@ -36,41 +39,49 @@ pub fn main() !void {
     const bucketsPath = try utils.concatOwned(allocator, scoopHome, "/buckets");
     defer allocator.free(bucketsPath);
 
-    var bucketsDir = try std.fs.openIterableDirAbsolute(bucketsPath, .{});
-    defer bucketsDir.close();
-
-    var iter = bucketsDir.iterate();
-
-    // const cpuCount = std.Thread.getCpuCount() catch 8;
+    var bucketPaths = try getBucketPaths(allocator, bucketsPath);
+    defer {
+        for (bucketPaths.items) |name| allocator.free(name);
+        bucketPaths.deinit();
+    }
 
     var results = std.ArrayList(search.SearchResult).init(allocator);
     defer results.deinit();
     var resultsMutex = std.Thread.Mutex{};
 
-    // TODO: consider limiting to cpu count
-    var threadHandles = try std.ArrayList(struct { std.Thread, []const u8 }).initCapacity(allocator, 16);
-    defer threadHandles.deinit();
+    for (bucketPaths.items) |path| {
+        try tp.spawn(search.searchBucket, .{search.SearchState{
+            .results = &results,
+            .resultsMutex = &resultsMutex,
+            .bucketBase = path,
+            .query = query,
+        }});
+    }
+
+    // wait for jobs to finish
+    tp.deinit();
+
+    if (!try printResults(allocator, results)) {
+        std.os.exit(1);
+    }
+}
+
+fn getBucketPaths(allocator: std.mem.Allocator, bucketsPath: []const u8) !std.ArrayList([]const u8) {
+    var bucketsDir = try std.fs.openIterableDirAbsolute(bucketsPath, .{});
+    defer bucketsDir.close();
+
+    var bucketPaths = std.ArrayList([]const u8).init(allocator);
+
+    var iter = bucketsDir.iterate();
     while (try iter.next()) |f| {
         if (f.kind != .directory) {
             continue;
         }
 
-        const bucketBase = try std.mem.concat(allocator, u8, &[_][]const u8{ bucketsPath, "/", f.name });
-
-        // start threads to look for results
-        const handle = try std.Thread.spawn(.{}, search.searchBucket, .{search.SearchState{ .results = &results, .resultsMutex = &resultsMutex, .bucketBase = bucketBase, .query = query }});
-        try threadHandles.append(.{ handle, bucketBase });
+        try bucketPaths.append(try std.mem.concat(allocator, u8, &[_][]const u8{ bucketsPath, "/", f.name }));
     }
 
-    // wait for threads to finish
-    for (threadHandles.items) |e| {
-        e.@"0".join();
-        defer allocator.free(e.@"1");
-    }
-
-    if (!try printResults(allocator, results)) {
-        std.os.exit(1);
-    }
+    return bucketPaths;
 }
 
 fn lessThanSearchResult(context: void, lhs: search.SearchResult, rhs: search.SearchResult) bool {

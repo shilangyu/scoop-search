@@ -165,8 +165,6 @@ pub fn searchBucket(state: SearchState) !void {
         }
     }
 
-    // std.mem.sort(, items: []T, context: anytype, comptime lessThanFn: fn(@TypeOf(context), lhs:T, rhs:T)bool)
-
     // 		sort.SliceStable(res, func(i, j int) bool {
     // 	// case insensitive comparison where hyphens are ignored
     // 	return strings.ToLower(strings.ReplaceAll(res[i].name, "-", "")) <= strings.ToLower(strings.ReplaceAll(res[j].name, "-", ""))
