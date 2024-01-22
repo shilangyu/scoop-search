@@ -4,16 +4,30 @@ const ParsedArgs = @import("args.zig").ParsedArgs;
 const env = @import("env.zig");
 const utils = @import("utils.zig");
 const search = @import("search.zig");
+const ThreadPool = @import("thread_pool.zig").ThreadPool;
+
+pub const ThreadPoolState = struct {
+    allocator: std.heap.ArenaAllocator,
+
+    fn create() @This() {
+        return .{ .allocator = std.heap.ArenaAllocator.init(std.heap.page_allocator) };
+    }
+
+    pub fn deinit(self: *@This()) void {
+        self.allocator.deinit();
+    }
+};
 
 pub fn main() !void {
+    // TODO: consider std.heap.HeapAllocator on windows
     // TODO: error messages
     // TODO: replace allocator, maybe https://github.com/kprotty/zap/blob/54cd494257915e6c126a0b70f95789b669b49b96/benchmarks/zig/async.zig#L60
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer _ = gpa.deinit();
 
-    var tp: std.Thread.Pool = undefined;
-    try tp.init(.{ .allocator = allocator });
+    var tp: ThreadPool(ThreadPoolState) = undefined;
+    try tp.init(.{ .allocator = allocator }, ThreadPoolState.create);
 
     var args = try ParsedArgs.parse(allocator);
     defer args.deinit();
