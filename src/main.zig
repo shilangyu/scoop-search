@@ -27,9 +27,7 @@ const SearchResult = struct {
 };
 
 pub fn main() !void {
-    // TODO: consider std.heap.HeapAllocator on windows
-    // TODO: error messages
-    // TODO: replace allocator, maybe https://github.com/kprotty/zap/blob/54cd494257915e6c126a0b70f95789b669b49b96/benchmarks/zig/async.zig#L60
+    // TODO: replace allocators, maybe https://github.com/kprotty/zap/blob/54cd494257915e6c126a0b70f95789b669b49b96/benchmarks/zig/async.zig#L60
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer _ = gpa.deinit();
@@ -58,7 +56,8 @@ pub fn main() !void {
     const bucketsPath = try utils.concatOwned(allocator, scoopHome, "/buckets");
     defer allocator.free(bucketsPath);
 
-    var bucketsDir = try std.fs.openIterableDirAbsolute(bucketsPath, .{});
+    var bucketsDir = std.fs.openIterableDirAbsolute(bucketsPath, .{}) catch
+        return std.io.getStdErr().writer().print("Could not open the buckets directory: {s}.\n", .{bucketsPath});
     defer bucketsDir.close();
 
     // search each bucket one by one
@@ -75,10 +74,16 @@ pub fn main() !void {
 
         const bucketBase = try std.mem.concat(allocator, u8, &[_][]const u8{ bucketsPath, "/", f.name });
         defer allocator.free(bucketBase);
+
+        const result = search.searchBucket(allocator, query, bucketBase) catch {
+            try std.io.getStdErr().writer().print("Failed to search through the bucket: {s}.\n", .{f.name});
+            continue;
+        };
+
         try results.append(try SearchResult.init(
             allocator,
             f.name,
-            try search.searchBucket(allocator, query, bucketBase),
+            result,
         ));
     }
 
