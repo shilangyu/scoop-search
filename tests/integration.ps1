@@ -1,3 +1,5 @@
+# TODO: remove or update this file
+
 go build .
 
 # add a bucket that holds manifests in root

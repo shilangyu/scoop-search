@@ -1,4 +1,4 @@
-*.exe
 tests/*.out
 zig-cache/
 zig-out/
+testing/
