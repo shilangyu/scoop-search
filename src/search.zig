@@ -58,6 +58,17 @@ pub const SearchResult = struct {
     matches: std.ArrayList(SearchMatch),
     allocators: std.ArrayList(Box(std.heap.GeneralPurposeAllocator(.{}))),
 
+    fn sortMatches(self: *@This()) void {
+        const Sort = struct {
+            fn lessThan(context: void, lhs: SearchMatch, rhs: SearchMatch) bool {
+                _ = context;
+                return std.mem.order(u8, lhs.name, rhs.name).compare(.lt);
+            }
+        };
+        // sort results by package name
+        std.mem.sort(SearchMatch, self.matches.items, {}, Sort.lessThan);
+    }
+
     pub fn deinit(self: *@This()) void {
         for (self.matches.items) |*e| e.deinit();
         self.matches.deinit();
@@ -132,13 +143,11 @@ pub fn searchBucket(allocator: std.mem.Allocator, query: []const u8, bucketBase:
     }
 
     const states = tp.deinit();
-    // TODO: sort results
-    // 		sort.SliceStable(res, func(i, j int) bool {
-    // 	// case insensitive comparison where hyphens are ignored
-    // 	return strings.ToLower(strings.ReplaceAll(res[i].name, "-", "")) <= strings.ToLower(strings.ReplaceAll(res[j].name, "-", ""))
-    // })
 
-    return try ThreadPoolState.mergeStates(allocator, states);
+    var result = try ThreadPoolState.mergeStates(allocator, states);
+    result.sortMatches();
+
+    return result;
 }
 
 /// If the given binary name matches the query, add it to the matches.
