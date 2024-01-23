@@ -6,15 +6,23 @@ const utils = @import("utils.zig");
 const search = @import("search.zig");
 const ThreadPool = @import("thread_pool.zig").ThreadPool;
 
-pub const ThreadPoolState = struct {
-    allocator: std.heap.ArenaAllocator,
+/// Stores results of a search in a single bucket.
+const SearchResult = struct {
+    bucketName: []const u8,
+    result: search.SearchResult,
+    allocator: std.mem.Allocator,
 
-    fn create() @This() {
-        return .{ .allocator = std.heap.ArenaAllocator.init(std.heap.page_allocator) };
+    fn init(allocator: std.mem.Allocator, bucketName: []const u8, result: search.SearchResult) !@This() {
+        return .{
+            .bucketName = try allocator.dupe(u8, bucketName),
+            .result = result,
+            .allocator = allocator,
+        };
     }
 
-    pub fn deinit(self: *@This()) void {
-        self.allocator.deinit();
+    fn deinit(self: *@This()) void {
+        self.allocator.free(self.bucketName);
+        self.result.deinit();
     }
 };
 
@@ -25,9 +33,6 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer _ = gpa.deinit();
-
-    var tp: ThreadPool(ThreadPoolState) = undefined;
-    try tp.init(.{ .allocator = allocator }, ThreadPoolState.create);
 
     var args = try ParsedArgs.parse(allocator);
     defer args.deinit();
@@ -53,68 +58,54 @@ pub fn main() !void {
     const bucketsPath = try utils.concatOwned(allocator, scoopHome, "/buckets");
     defer allocator.free(bucketsPath);
 
-    var bucketPaths = try getBucketPaths(allocator, bucketsPath);
-    defer {
-        for (bucketPaths.items) |name| allocator.free(name);
-        bucketPaths.deinit();
-    }
-
-    var results = std.ArrayList(search.SearchResult).init(allocator);
-    defer results.deinit();
-    var resultsMutex = std.Thread.Mutex{};
-
-    for (bucketPaths.items) |path| {
-        try tp.spawn(search.searchBucket, .{search.SearchState{
-            .results = &results,
-            .resultsMutex = &resultsMutex,
-            .bucketBase = path,
-            .query = query,
-        }});
-    }
-
-    // wait for jobs to finish
-    tp.deinit();
-
-    if (!try printResults(allocator, results)) {
-        std.os.exit(1);
-    }
-}
-
-fn getBucketPaths(allocator: std.mem.Allocator, bucketsPath: []const u8) !std.ArrayList([]const u8) {
     var bucketsDir = try std.fs.openIterableDirAbsolute(bucketsPath, .{});
     defer bucketsDir.close();
 
-    var bucketPaths = std.ArrayList([]const u8).init(allocator);
-
+    // search each bucket one by one
+    var results = std.ArrayList(SearchResult).init(allocator);
+    defer {
+        for (results.items) |*e| e.deinit();
+        results.deinit();
+    }
     var iter = bucketsDir.iterate();
     while (try iter.next()) |f| {
         if (f.kind != .directory) {
             continue;
         }
 
-        try bucketPaths.append(try std.mem.concat(allocator, u8, &[_][]const u8{ bucketsPath, "/", f.name }));
+        const bucketBase = try std.mem.concat(allocator, u8, &[_][]const u8{ bucketsPath, "/", f.name });
+        defer allocator.free(bucketBase);
+        try results.append(try SearchResult.init(
+            allocator,
+            f.name,
+            try search.searchBucket(allocator, query, bucketBase),
+        ));
     }
 
-    return bucketPaths;
-}
-
-fn lessThanSearchResult(context: void, lhs: search.SearchResult, rhs: search.SearchResult) bool {
-    _ = context;
-    return std.mem.order(u8, lhs.bucketName, rhs.bucketName).compare(.lt);
+    const hasMatches = try printResults(allocator, &results);
+    if (!hasMatches)
+        std.os.exit(1);
 }
 
 /// Returns whether there were any matches.
-fn printResults(allocator: std.mem.Allocator, results: std.ArrayList(search.SearchResult)) !bool {
-    std.mem.sort(search.SearchResult, results.items, {}, lessThanSearchResult);
+fn printResults(allocator: std.mem.Allocator, results: *std.ArrayList(SearchResult)) !bool {
+    const SearchResultBucketSort = struct {
+        fn lessThan(context: void, lhs: SearchResult, rhs: SearchResult) bool {
+            _ = context;
+            return std.mem.order(u8, lhs.bucketName, rhs.bucketName).compare(.lt);
+        }
+    };
+    // sort results by bucket name
+    std.mem.sort(SearchResult, results.items, {}, SearchResultBucketSort.lessThan);
 
     var hasMatches = false;
 
     // reserve some conservative amount of memory to avoid initial allocs
     var buffer = try std.ArrayList(u8).initCapacity(allocator, 8 * 1024);
+    defer buffer.deinit();
 
     for (results.items) |*result| {
-        defer result.deinit();
-        if (result.matches.items.len == 0) {
+        if (result.result.matches.items.len == 0) {
             continue;
         }
         hasMatches = true;
@@ -123,7 +114,7 @@ fn printResults(allocator: std.mem.Allocator, results: std.ArrayList(search.Sear
         try buffer.appendSlice(result.bucketName);
         try buffer.appendSlice("' bucket:\n");
 
-        for (result.matches.items) |match| {
+        for (result.result.matches.items) |match| {
             try buffer.appendSlice("    ");
             try buffer.appendSlice(match.name);
             try buffer.appendSlice(" (");
@@ -140,7 +131,7 @@ fn printResults(allocator: std.mem.Allocator, results: std.ArrayList(search.Sear
     }
 
     if (!hasMatches) {
-        try buffer.appendSlice("No matches found.");
+        try buffer.appendSlice("No matches found.\n");
     }
 
     try std.io.getStdOut().writeAll(buffer.items);
