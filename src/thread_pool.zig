@@ -26,7 +26,7 @@ pub fn ThreadPool(comptime T: type) type {
             n_jobs: ?u32 = null,
         };
 
-        pub fn init(pool: *Self, options: Options, comptime create_state: *const fn () std.mem.Allocator.Error!T) !void {
+        pub fn init(pool: *Self, options: Options, comptime create_state: *const fn (std.mem.Allocator) std.mem.Allocator.Error!T) !void {
             const allocator = options.allocator;
 
             const thread_count = options.n_jobs orelse @max(1, std.Thread.getCpuCount() catch 1);
@@ -47,13 +47,13 @@ pub fn ThreadPool(comptime T: type) type {
             // kill and join any threads we spawned previously on error.
             var spawned: usize = 0;
             errdefer {
-                var states = pool.join(spawned);
-                for (states.items) |*e| e.deinit();
-                states.deinit();
+                pool.join(spawned);
+                for (pool.states.items) |*e| e.deinit();
+                pool.states.deinit();
             }
 
             for (pool.threads) |*thread| {
-                try pool.states.append(try create_state());
+                try pool.states.append(try create_state(allocator));
                 thread.* = try std.Thread.spawn(.{}, worker, .{
                     pool,
                     // pointer shall not move after `append` above; we allocated needed capacity at the start
@@ -64,12 +64,13 @@ pub fn ThreadPool(comptime T: type) type {
         }
 
         pub fn deinit(pool: *Self) std.ArrayList(T) {
-            const states = pool.join(pool.threads.len); // kill and join all threads.
+            pool.join(pool.threads.len); // kill and join all threads.
+            const states = pool.states;
             pool.* = undefined;
             return states;
         }
 
-        fn join(pool: *Self, spawned: usize) std.ArrayList(T) {
+        fn join(pool: *Self, spawned: usize) void {
             if (builtin.single_threaded) {
                 return;
             }
@@ -90,7 +91,6 @@ pub fn ThreadPool(comptime T: type) type {
             }
 
             pool.allocator.free(pool.threads);
-            return pool.states;
         }
 
         pub fn spawn(pool: *Self, comptime func: anytype, args: anytype) !void {
