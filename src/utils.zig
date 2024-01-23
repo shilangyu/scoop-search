@@ -1,6 +1,7 @@
 const std = @import("std");
 const assert = std.debug.assert;
 
+/// Concatenates two slices into a newly allocated buffer. Returns an owned reference slice into the contents.
 pub fn concatOwned(allocator: std.mem.Allocator, a: []const u8, b: []const u8) ![]const u8 {
     const result = try allocator.alloc(u8, a.len + b.len);
     @memcpy(result[0..a.len], a);
@@ -8,6 +9,7 @@ pub fn concatOwned(allocator: std.mem.Allocator, a: []const u8, b: []const u8) !
     return result;
 }
 
+/// Reads a file into a newly allocated buffer. Returns an owned reference slice into the contents.
 pub fn readFileOwned(allocator: std.mem.Allocator, file: std.fs.File) ![]const u8 {
     const stat = try file.stat();
     var buffer = try allocator.alloc(u8, @as(usize, stat.size));
@@ -40,4 +42,26 @@ pub fn basename(path: []const u8) struct { withExt: []const u8, withoutExt: []co
     const base = std.fs.path.basename(path);
     const ext = std.fs.path.extension(base);
     return .{ .withExt = base, .withoutExt = base[0..(base.len - ext.len)] };
+}
+
+/// An owned pointer allocated using an allocator. ptr address will not move.
+/// Similar to Rust's Box<T>.
+pub fn Box(comptime T: type) type {
+    return struct {
+        const Self = @This();
+
+        ptr: *T,
+        allocator: std.mem.Allocator,
+
+        /// Allocates a new Box<T> using the provided allocator.
+        pub fn init(allocator: std.mem.Allocator, value: T) !Self {
+            const ptr = try allocator.create(T);
+            ptr.* = value;
+            return .{ .ptr = ptr, .allocator = allocator };
+        }
+
+        pub fn deinit(self: *Self) void {
+            self.allocator.destroy(self.ptr);
+        }
+    };
 }
