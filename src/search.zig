@@ -6,10 +6,10 @@ const Box = utils.Box;
 const ThreadPoolState = struct {
     matches: std.ArrayList(SearchMatch),
     read_buffer: []u8,
-    allocator: Box(std.heap.GeneralPurposeAllocator(.{})),
+    allocator: Box(utils.HeapAllocator),
 
     fn create(allocator: std.mem.Allocator) !@This() {
-        var allocat = try Box(std.heap.GeneralPurposeAllocator(.{})).init(allocator, std.heap.GeneralPurposeAllocator(.{}){});
+        var allocat = try Box(utils.HeapAllocator).init(allocator, utils.HeapAllocator.init());
 
         return .{
             .matches = std.ArrayList(SearchMatch).init(allocat.ptr.allocator()),
@@ -24,7 +24,7 @@ const ThreadPoolState = struct {
         for (states.items) |*e| totalMatches += e.matches.items.len;
 
         var matches = try std.ArrayList(SearchMatch).initCapacity(allocator, totalMatches);
-        var allocators = try std.ArrayList(Box(std.heap.GeneralPurposeAllocator(.{}))).initCapacity(allocator, states.items.len);
+        var allocators = try std.ArrayList(Box(utils.HeapAllocator)).initCapacity(allocator, states.items.len);
         for (states.items) |*e| {
             e.allocator.ptr.allocator().free(e.read_buffer);
 
@@ -48,7 +48,7 @@ const ThreadPoolState = struct {
 
         self.allocator.ptr.allocator().free(self.read_buffer);
 
-        std.debug.assert(self.allocator.ptr.deinit() == .ok);
+        self.allocator.ptr.deinit();
         self.allocator.deinit();
     }
 };
@@ -56,7 +56,7 @@ const ThreadPoolState = struct {
 /// A merged result of a single bucket search.
 pub const SearchResult = struct {
     matches: std.ArrayList(SearchMatch),
-    allocators: std.ArrayList(Box(std.heap.GeneralPurposeAllocator(.{}))),
+    allocators: std.ArrayList(Box(utils.HeapAllocator)),
 
     fn sortMatches(self: *@This()) void {
         const Sort = struct {
@@ -74,7 +74,7 @@ pub const SearchResult = struct {
         self.matches.deinit();
 
         for (self.allocators.items) |*e| {
-            std.debug.assert(e.ptr.deinit() == .ok);
+            e.ptr.deinit();
             e.deinit();
         }
         self.allocators.deinit();

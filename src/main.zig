@@ -27,10 +27,9 @@ const SearchResult = struct {
 };
 
 pub fn main() !void {
-    // TODO: replace allocators, maybe https://github.com/kprotty/zap/blob/54cd494257915e6c126a0b70f95789b669b49b96/benchmarks/zig/async.zig#L60
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
-    defer _ = gpa.deinit();
+    var heap = utils.HeapAllocator.init();
+    defer heap.deinit();
+    const allocator = heap.allocator();
 
     var args = try ParsedArgs.parse(allocator);
     defer args.deinit();
