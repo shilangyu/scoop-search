@@ -1,6 +1,5 @@
 # scoop-search
 
-[![](https://goreportcard.com/badge/github.com/shilangyu/scoop-search)](https://goreportcard.com/report/github.com/shilangyu/scoop-search)
 [![](https://github.com/shilangyu/scoop-search/workflows/ci/badge.svg)](https://github.com/shilangyu/scoop-search/actions)
 
 Fast `scoop search` drop-in replacement 🚀
@@ -49,23 +48,39 @@ Behaves just like `scoop search` and returns identical output. If any difference
 
 **Non-goal**: any additional features unavailable in scoop search
 
+## Building
+
+This project uses Zig. Building and running works on all platforms, not only Windows.
+
+Build with (output is stored in `./zig-out/bin`):
+
+```sh
+zig build -Doptimize=ReleaseFast
+```
+
+Run debug with:
+
+```sh
+zig build run -- searchterm
+```
+
 ## Benchmarks
 
-Done with [hyperfine](https://github.com/sharkdp/hyperfine). `scoop-search` is on average 50 times faster.
+Done with [hyperfine](https://github.com/sharkdp/hyperfine). `scoop-search` is on average 350 times faster.
 
 ```sh
 ❯ hyperfine --warmup 1 'scoop-search google' 'scoop search google'
-Benchmark #1: scoop-search google
-  Time (mean ± σ):      76.1 ms ±   1.9 ms    [User: 0.8 ms, System: 5.8 ms]
-  Range (min … max):    73.4 ms …  82.7 ms    37 runs
+Benchmark 1: scoop-search google
+  Time (mean ± σ):      60.3 ms ±   3.5 ms    [User: 91.2 ms, System: 394.2 ms]
+  Range (min … max):    55.1 ms …  73.8 ms    49 runs
 
-Benchmark #2: scoop search google
-  Time (mean ± σ):      3.910 s ±  0.015 s    [User: 1.4 ms, System: 7.9 ms]
-  Range (min … max):    3.888 s …  3.928 s    10 runs
+Benchmark 2: scoop search google
+  Time (mean ± σ):     21.275 s ±  2.657 s    [User: 9.604 s, System: 11.789 s]
+  Range (min … max):   19.143 s … 27.035 s    10 runs
 
 Summary
-  'scoop-search google' ran
-   51.37 ± 1.31 times faster than 'scoop search google'
+  scoop-search google ran
+  352.74 ± 48.49 times faster than scoop search google
 ```
 
 _ran on AMD Ryzen 5 3600 @ 3.6GHz_
