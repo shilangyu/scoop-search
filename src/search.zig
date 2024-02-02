@@ -196,7 +196,7 @@ fn matchPackageAux(packagesDir: std.fs.Dir, query: []const u8, manifestName: []c
     defer allocator.free(lowerStem);
 
     // does the package name match?
-    if (std.mem.containsAtLeast(u8, lowerStem, 1, query)) {
+    if (query.len == 0 or std.mem.containsAtLeast(u8, lowerStem, 1, query)) {
         try state.matches.append(try SearchMatch.init(allocator, stem, version, null));
     } else {
         // the name did not match, lets see if any binary files do
