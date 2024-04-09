@@ -1,6 +1,7 @@
 const std = @import("std");
 const utils = @import("utils.zig");
 const Box = utils.Box;
+const DebugLogger = utils.DebugLogger;
 
 /// State associated with a worker thread. Stores thread local cache and matches. Has its own allocator.
 const ThreadPoolState = struct {
@@ -118,9 +119,10 @@ fn getPackagesDir(allocator: std.mem.Allocator, bucketBase: []const u8) !std.fs.
     return packages;
 }
 
-pub fn searchBucket(allocator: std.mem.Allocator, query: []const u8, bucketBase: []const u8) !SearchResult {
+pub fn searchBucket(allocator: std.mem.Allocator, query: []const u8, bucketBase: []const u8, debug: DebugLogger) !SearchResult {
     var tp: ThreadPool = undefined;
     try tp.init(.{ .allocator = allocator }, ThreadPoolState.create);
+    try debug.log("Worker count: {}\n", .{tp.threads.len});
 
     var packages = try getPackagesDir(allocator, bucketBase);
     defer packages.close();
