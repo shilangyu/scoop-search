@@ -12,7 +12,7 @@ scoop install scoop-search
 
 ## PowerShell hook
 
-Instead of using `scoop-search.exe <term>` you can setup a hook that will run `scoop-search.exe` whenever you use native `scoop search`
+Instead of using `scoop-search.exe <term>` you can set a hook that will run `scoop-search.exe` whenever you use native `scoop search`
 
 Add this to your Powershell profile (usually located at `$PROFILE`)
 
