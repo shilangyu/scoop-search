@@ -107,14 +107,14 @@ pub const SearchMatch = struct {
 };
 
 /// Returns the directory where manifests are stored for the given bucket.
-fn getPackagesDir(allocator: std.mem.Allocator, bucketBase: []const u8) !std.fs.IterableDir {
+fn getPackagesDir(allocator: std.mem.Allocator, bucketBase: []const u8) !std.fs.Dir {
     // check if $bucketName/bucket exists, if not use $bucketName
     const packagesPath = try utils.concatOwned(allocator, bucketBase, "/bucket");
     defer allocator.free(packagesPath);
 
-    var packages = std.fs.openIterableDirAbsolute(packagesPath, .{}) catch
+    const packages = std.fs.openDirAbsolute(packagesPath, .{ .iterate = true }) catch
     // fallback to $bucketName
-        try std.fs.openIterableDirAbsolute(bucketBase, .{});
+        try std.fs.openDirAbsolute(bucketBase, .{ .iterate = true });
 
     return packages;
 }

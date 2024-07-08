@@ -1,3 +1,4 @@
 tests/*.out
-zig-cache/
+.zig-cache/
+zig-out/
 testing/
