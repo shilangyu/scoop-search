@@ -40,16 +40,20 @@ pub fn main() !void {
         std.process.exit(0);
     }
 
+    const debug = utils.DebugLogger.init(env.isVerbose());
+    try debug.log("Commandline arguments: {}\n", .{args});
+
     const query = try std.ascii.allocLowerString(allocator, args.query orelse "");
     defer allocator.free(query);
 
-    const scoopHome = env.scoopHomeOwned(allocator) catch |err| switch (err) {
+    const scoopHome = env.scoopHomeOwned(allocator, debug) catch |err| switch (err) {
         error.MissingHomeDir => {
             return std.io.getStdErr().writer().print("Could not establish scoop home directory. USERPROFILE environment variable is not defined.\n", .{});
         },
         else => |e| return e,
     };
     defer allocator.free(scoopHome);
+    try debug.log("Scoop home: {s}\n", .{scoopHome});
 
     // get buckets path
     const bucketsPath = try utils.concatOwned(allocator, scoopHome, "/buckets");
@@ -73,11 +77,13 @@ pub fn main() !void {
 
         const bucketBase = try std.mem.concat(allocator, u8, &[_][]const u8{ bucketsPath, "/", f.name });
         defer allocator.free(bucketBase);
+        try debug.log("Found bucket: {s}\n", .{bucketBase});
 
-        const result = search.searchBucket(allocator, query, bucketBase) catch {
+        const result = search.searchBucket(allocator, query, bucketBase, debug) catch {
             try std.io.getStdErr().writer().print("Failed to search through the bucket: {s}.\n", .{f.name});
             continue;
         };
+        try debug.log("Found {} matches\n", .{result.matches.items.len});
 
         try results.append(try SearchResult.init(
             allocator,
@@ -85,6 +91,8 @@ pub fn main() !void {
             result,
         ));
     }
+
+    try debug.log("Done searching\n", .{});
 
     const hasMatches = try printResults(allocator, &results);
     if (!hasMatches)
