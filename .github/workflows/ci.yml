@@ -24,7 +24,7 @@ jobs:
         run: zig fmt --check .
 
       - name: Build for Windows
-        run: zig build -Doptimize=ReleaseFast
+        run: zig build -Doptimize=ReleaseFast -Dcpu=baseline
 
       - name: Release
         uses: softprops/action-gh-release@v2
