@@ -106,8 +106,8 @@ pub fn ThreadPool(comptime T: type) type {
                 run_node: RunQueue.Node = .{ .data = .{ .runFn = runFn } },
 
                 fn runFn(runnable: *Runnable, state: *T) void {
-                    const run_node = @fieldParentPtr(RunQueue.Node, "data", runnable);
-                    const closure = @fieldParentPtr(@This(), "run_node", run_node);
+                    const run_node: *RunQueue.Node = @fieldParentPtr("data", runnable);
+                    const closure: *@This() = @fieldParentPtr("run_node", run_node);
                     @call(.auto, func, closure.arguments ++ .{state});
 
                     // The thread pool's allocator is protected by the mutex.

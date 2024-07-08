@@ -53,7 +53,7 @@ pub fn concatOwned(allocator: std.mem.Allocator, a: []const u8, b: []const u8) !
 /// Reads a file into a newly allocated buffer. Returns an owned reference slice into the contents.
 pub fn readFileOwned(allocator: std.mem.Allocator, file: std.fs.File) ![]const u8 {
     const stat = try file.stat();
-    var buffer = try allocator.alloc(u8, @as(usize, stat.size));
+    const buffer = try allocator.alloc(u8, @as(usize, stat.size));
 
     assert(try file.readAll(buffer) == stat.size);
 
