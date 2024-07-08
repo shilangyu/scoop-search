@@ -3,6 +3,11 @@ const utils = @import("utils.zig");
 const testing = std.testing;
 const DebugLogger = utils.DebugLogger;
 
+/// Checks if scoop-search should run in verbose mode.
+pub fn isVerbose() bool {
+    return std.process.hasEnvVarConstant("SCOOP_SEARCH_VERBOSE");
+}
+
 /// Gets the home directory of the current user.
 fn homeDirOwned(allocator: std.mem.Allocator, debug: DebugLogger) !?[]const u8 {
     const userProfile = std.process.getEnvVarOwned(allocator, "USERPROFILE");
