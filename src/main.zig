@@ -40,7 +40,7 @@ pub fn main() !void {
         std.process.exit(0);
     }
 
-    const debug = utils.DebugLogger.init(args.verbose);
+    const debug = utils.DebugLogger.init(env.isVerbose());
     try debug.log("Commandline arguments: {}\n", .{args});
 
     const query = try std.ascii.allocLowerString(allocator, args.query orelse "");
