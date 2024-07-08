@@ -111,9 +111,9 @@ fn getPackagesDir(allocator: std.mem.Allocator, bucketBase: []const u8) !std.fs.
     const packagesPath = try utils.concatOwned(allocator, bucketBase, "/bucket");
     defer allocator.free(packagesPath);
 
-    const packages = std.fs.openDirAbsolute(packagesPath, .{}) catch
+    const packages = std.fs.openDirAbsolute(packagesPath, .{ .iterate = true }) catch
     // fallback to $bucketName
-        try std.fs.openDirAbsolute(bucketBase, .{});
+        try std.fs.openDirAbsolute(bucketBase, .{ .iterate = true });
 
     return packages;
 }

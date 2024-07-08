@@ -55,7 +55,7 @@ pub fn main() !void {
     const bucketsPath = try utils.concatOwned(allocator, scoopHome, "/buckets");
     defer allocator.free(bucketsPath);
 
-    var bucketsDir = std.fs.openDirAbsolute(bucketsPath, .{}) catch
+    var bucketsDir = std.fs.openDirAbsolute(bucketsPath, .{ .iterate = true }) catch
         return std.io.getStdErr().writer().print("Could not open the buckets directory: {s}.\n", .{bucketsPath});
     defer bucketsDir.close();
 
