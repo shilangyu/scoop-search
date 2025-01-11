@@ -2,6 +2,7 @@ const std = @import("std");
 const utils = @import("utils.zig");
 const Box = utils.Box;
 const DebugLogger = utils.DebugLogger;
+const mvzr = @import("mvzr");
 
 /// State associated with a worker thread. Stores thread local cache and matches. Has its own allocator.
 const ThreadPoolState = struct {
@@ -162,6 +163,13 @@ fn checkBin(allocator: std.mem.Allocator, bin: []const u8, query: []const u8, st
         try matches.append(try SearchMatch.init(allocator, stem, version, against.withExt));
         return true;
     }
+
+    const regex = mvzr.compile(query);
+    if (regex != null and regex.?.isMatch(lowerBinStem)) {
+        try matches.append(try SearchMatch.init(allocator, stem, version, against.withExt));
+        return true;
+    }
+
     return false;
 }
 
@@ -197,8 +205,10 @@ fn matchPackageAux(packagesDir: std.fs.Dir, query: []const u8, manifestName: []c
     const lowerStem = try std.ascii.allocLowerString(allocator, stem);
     defer allocator.free(lowerStem);
 
+    const regex = mvzr.compile(query);
+
     // does the package name match?
-    if (query.len == 0 or std.mem.containsAtLeast(u8, lowerStem, 1, query)) {
+    if (query.len == 0 or std.mem.containsAtLeast(u8, lowerStem, 1, query) or (regex != null and regex.?.isMatch(lowerStem))) {
         try state.matches.append(try SearchMatch.init(allocator, stem, version, null));
     } else {
         // the name did not match, lets see if any binary files do
