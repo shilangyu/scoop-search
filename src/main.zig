@@ -47,10 +47,8 @@ pub fn main() !void {
     const query = try std.ascii.allocLowerString(allocator, args.query orelse "");
     defer allocator.free(query);
 
-    const regexQuery = mvzr.compile(query);
-    if (regexQuery == null) {
+    const regexQuery = mvzr.compile(query) orelse
         return std.io.getStdErr().writer().print("Invalid regular expression: parsing \"{s}\".", .{query});
-    }
 
     const scoopHome = env.scoopHomeOwned(allocator, debug) catch |err| switch (err) {
         error.MissingHomeDir => {
