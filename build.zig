@@ -15,6 +15,10 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
+    // Add mvzr dependency and create module.
+    const mvzr_dep = b.dependency("mvzr", .{ .target = target, .optimize = optimize });
+    const mvzr_module = mvzr_dep.module("mvzr");
+
     const exe = b.addExecutable(.{
         .name = "scoop-search",
         // In this case the main source file is merely a path, however, in more
@@ -23,6 +27,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    exe.root_module.addImport("mvzr", mvzr_module);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
@@ -59,6 +64,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    unit_tests.root_module.addImport("mvzr", mvzr_module);
 
     const run_unit_tests = b.addRunArtifact(unit_tests);
 

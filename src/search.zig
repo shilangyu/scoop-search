@@ -2,6 +2,7 @@ const std = @import("std");
 const utils = @import("utils.zig");
 const Box = utils.Box;
 const DebugLogger = utils.DebugLogger;
+const mvzr = @import("mvzr");
 
 /// State associated with a worker thread. Stores thread local cache and matches. Has its own allocator.
 const ThreadPoolState = struct {
@@ -119,7 +120,7 @@ fn getPackagesDir(allocator: std.mem.Allocator, bucketBase: []const u8) !std.fs.
     return packages;
 }
 
-pub fn searchBucket(allocator: std.mem.Allocator, query: []const u8, bucketBase: []const u8, debug: DebugLogger) !SearchResult {
+pub fn searchBucket(allocator: std.mem.Allocator, query: mvzr.Regex, bucketBase: []const u8, debug: DebugLogger) !SearchResult {
     var tp: ThreadPool = undefined;
     try tp.init(.{ .allocator = allocator }, ThreadPoolState.create);
     try debug.log("Worker count: {}\n", .{tp.threads.len});
@@ -153,25 +154,26 @@ pub fn searchBucket(allocator: std.mem.Allocator, query: []const u8, bucketBase:
 }
 
 /// If the given binary name matches the query, add it to the matches.
-fn checkBin(allocator: std.mem.Allocator, bin: []const u8, query: []const u8, stem: []const u8, version: []const u8, matches: *std.ArrayList(SearchMatch)) !bool {
+fn checkBin(allocator: std.mem.Allocator, bin: []const u8, query: mvzr.Regex, stem: []const u8, version: []const u8, matches: *std.ArrayList(SearchMatch)) !bool {
     const against = utils.basename(bin);
     const lowerBinStem = try std.ascii.allocLowerString(allocator, against.withoutExt);
     defer allocator.free(lowerBinStem);
 
-    if (std.mem.containsAtLeast(u8, lowerBinStem, 1, query)) {
+    if (query.isMatch(lowerBinStem)) {
         try matches.append(try SearchMatch.init(allocator, stem, version, against.withExt));
         return true;
     }
+
     return false;
 }
 
-fn matchPackage(packagesDir: std.fs.Dir, query: []const u8, manifestName: []const u8, state: *ThreadPoolState) void {
+fn matchPackage(packagesDir: std.fs.Dir, query: mvzr.Regex, manifestName: []const u8, state: *ThreadPoolState) void {
     // ignore failed match
     matchPackageAux(packagesDir, query, manifestName, state) catch return;
 }
 
 /// A worker function for checking if a given manifest matches the query.
-fn matchPackageAux(packagesDir: std.fs.Dir, query: []const u8, manifestName: []const u8, state: *ThreadPoolState) !void {
+fn matchPackageAux(packagesDir: std.fs.Dir, query: mvzr.Regex, manifestName: []const u8, state: *ThreadPoolState) !void {
     const allocator = state.allocator.ptr.allocator();
 
     const extension = comptime ".json";
@@ -198,7 +200,7 @@ fn matchPackageAux(packagesDir: std.fs.Dir, query: []const u8, manifestName: []c
     defer allocator.free(lowerStem);
 
     // does the package name match?
-    if (query.len == 0 or std.mem.containsAtLeast(u8, lowerStem, 1, query)) {
+    if (query.isMatch(lowerStem)) {
         try state.matches.append(try SearchMatch.init(allocator, stem, version, null));
     } else {
         // the name did not match, lets see if any binary files do

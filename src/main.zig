@@ -5,6 +5,7 @@ const env = @import("env.zig");
 const utils = @import("utils.zig");
 const search = @import("search.zig");
 const ThreadPool = @import("thread_pool.zig").ThreadPool;
+const mvzr = @import("mvzr");
 
 /// Stores results of a search in a single bucket.
 const SearchResult = struct {
@@ -46,6 +47,9 @@ pub fn main() !void {
     const query = try std.ascii.allocLowerString(allocator, args.query orelse "");
     defer allocator.free(query);
 
+    const regexQuery = mvzr.compile(query) orelse
+        return std.io.getStdErr().writer().print("Invalid regular expression: parsing \"{s}\".", .{query});
+
     const scoopHome = env.scoopHomeOwned(allocator, debug) catch |err| switch (err) {
         error.MissingHomeDir => {
             return std.io.getStdErr().writer().print("Could not establish scoop home directory. USERPROFILE environment variable is not defined.\n", .{});
@@ -79,7 +83,7 @@ pub fn main() !void {
         defer allocator.free(bucketBase);
         try debug.log("Found bucket: {s}\n", .{bucketBase});
 
-        const result = search.searchBucket(allocator, query, bucketBase, debug) catch {
+        const result = search.searchBucket(allocator, regexQuery, bucketBase, debug) catch {
             try std.io.getStdErr().writer().print("Failed to search through the bucket: {s}.\n", .{f.name});
             continue;
         };
