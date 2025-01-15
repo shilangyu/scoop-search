@@ -83,7 +83,7 @@ pub fn main() !void {
         defer allocator.free(bucketBase);
         try debug.log("Found bucket: {s}\n", .{bucketBase});
 
-        const result = search.searchBucket(allocator, regexQuery.?, bucketBase, debug) catch {
+        const result = search.searchBucket(allocator, regexQuery, bucketBase, debug) catch {
             try std.io.getStdErr().writer().print("Failed to search through the bucket: {s}.\n", .{f.name});
             continue;
         };
