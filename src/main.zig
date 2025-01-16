@@ -136,10 +136,16 @@ fn printResults(allocator: std.mem.Allocator, results: *std.ArrayList(SearchResu
             try buffer.appendSlice(" (");
             try buffer.appendSlice(match.version);
             try buffer.append(')');
-            if (match.bin) |bin| {
-                try buffer.appendSlice(" --> includes '");
-                try buffer.appendSlice(bin);
-                try buffer.append('\'');
+            if (match.bins) |bins| {
+                try buffer.appendSlice(" --> includes ");
+                for (bins.items, 0..) |bin, i| {
+                    try buffer.append('\'');
+                    try buffer.appendSlice(bin);
+                    try buffer.append('\'');
+                    if (i != bins.items.len - 1) {
+                        try buffer.appendSlice(" | ");
+                    }
+                }
             }
             try buffer.append('\n');
         }
