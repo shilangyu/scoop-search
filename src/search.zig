@@ -167,7 +167,7 @@ pub fn searchBucket(allocator: std.mem.Allocator, query: mvzr.Regex, bucketBase:
     return result;
 }
 
-/// If the given binary name matches the query, add it to the matches.
+/// If the given binary name matches the query, return it.
 fn checkBin(allocator: std.mem.Allocator, bin: []const u8, query: mvzr.Regex) !?[]const u8 {
     const against = utils.basename(bin);
     const lowerBinStem = try std.ascii.allocLowerString(allocator, against.withoutExt);
