@@ -138,14 +138,9 @@ fn printResults(allocator: std.mem.Allocator, results: *std.ArrayList(SearchResu
             try buffer.append(')');
             if (match.bins) |bins| {
                 try buffer.appendSlice(" --> includes ");
-                for (bins.items, 0..) |bin, i| {
-                    try buffer.append('\'');
-                    try buffer.appendSlice(bin);
-                    try buffer.append('\'');
-                    if (i != bins.items.len - 1) {
-                        try buffer.appendSlice(" | ");
-                    }
-                }
+                try buffer.append('\'');
+                try buffer.appendSlice(bins.items[0]);
+                try buffer.append('\'');
             }
             try buffer.append('\n');
         }
