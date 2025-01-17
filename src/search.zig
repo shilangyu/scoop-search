@@ -88,14 +88,20 @@ const ThreadPool = @import("thread_pool.zig").ThreadPool(ThreadPoolState);
 pub const SearchMatch = struct {
     name: []const u8,
     version: []const u8,
-    bin: ?[]const u8,
+    bins: std.ArrayList([]const u8),
     allocator: std.mem.Allocator,
 
-    fn init(allocator: std.mem.Allocator, name: []const u8, version: []const u8, bin: ?[]const u8) !@This() {
+    fn init(allocator: std.mem.Allocator, name: []const u8, version: []const u8, bins: std.ArrayList([]const u8)) !@This() {
         return .{
             .name = try allocator.dupe(u8, name),
             .version = try allocator.dupe(u8, version),
-            .bin = if (bin) |b| try allocator.dupe(u8, b) else null,
+            .bins = blk: {
+                var dupedBins = try std.ArrayList([]const u8).initCapacity(allocator, bins.items.len);
+                for (bins.items) |bin| {
+                    try dupedBins.append(try allocator.dupe(u8, bin));
+                }
+                break :blk dupedBins;
+            },
             .allocator = allocator,
         };
     }
@@ -103,7 +109,10 @@ pub const SearchMatch = struct {
     pub fn deinit(self: *@This()) void {
         self.allocator.free(self.name);
         self.allocator.free(self.version);
-        if (self.bin) |bin| self.allocator.free(bin);
+        for (self.bins.items) |bin| {
+            self.allocator.free(bin);
+        }
+        self.bins.deinit();
     }
 };
 
@@ -153,18 +162,13 @@ pub fn searchBucket(allocator: std.mem.Allocator, query: mvzr.Regex, bucketBase:
     return result;
 }
 
-/// If the given binary name matches the query, add it to the matches.
-fn checkBin(allocator: std.mem.Allocator, bin: []const u8, query: mvzr.Regex, stem: []const u8, version: []const u8, matches: *std.ArrayList(SearchMatch)) !bool {
+/// If the given binary name matches the query, return it.
+fn checkBin(allocator: std.mem.Allocator, bin: []const u8, query: mvzr.Regex) !?[]const u8 {
     const against = utils.basename(bin);
     const lowerBinStem = try std.ascii.allocLowerString(allocator, against.withoutExt);
     defer allocator.free(lowerBinStem);
 
-    if (query.isMatch(lowerBinStem)) {
-        try matches.append(try SearchMatch.init(allocator, stem, version, against.withExt));
-        return true;
-    }
-
-    return false;
+    return if (query.isMatch(lowerBinStem)) against.withExt else null;
 }
 
 fn matchPackage(packagesDir: std.fs.Dir, query: mvzr.Regex, manifestName: []const u8, state: *ThreadPoolState) void {
@@ -199,34 +203,39 @@ fn matchPackageAux(packagesDir: std.fs.Dir, query: mvzr.Regex, manifestName: []c
     const lowerStem = try std.ascii.allocLowerString(allocator, stem);
     defer allocator.free(lowerStem);
 
+    var matchedBins = std.ArrayList([]const u8).init(allocator);
+    defer matchedBins.deinit();
+
     // does the package name match?
     if (query.isMatch(lowerStem)) {
-        try state.matches.append(try SearchMatch.init(allocator, stem, version, null));
+        try state.matches.append(try SearchMatch.init(allocator, stem, version, matchedBins));
     } else {
         // the name did not match, lets see if any binary files do
         switch (parsed.value.bin orelse .null) {
             .string => |bin| {
-                _ = try checkBin(allocator, bin, query, stem, version, &state.matches);
+                if (try checkBin(allocator, bin, query)) |matchedBin| {
+                    try matchedBins.append(matchedBin);
+                }
             },
             .array => |bins| for (bins.items) |e|
                 switch (e) {
-                    .string => |bin| if (try checkBin(allocator, bin, query, stem, version, &state.matches)) {
-                        break;
+                    .string => |bin| if (try checkBin(allocator, bin, query)) |matchedBin| {
+                        try matchedBins.append(matchedBin);
                     },
                     .array => |args| {
                         // check only first two (exe, alias), the rest are command flags
                         if (args.items.len > 0) {
                             switch (args.items[0]) {
-                                .string => |bin| if (try checkBin(allocator, bin, query, stem, version, &state.matches)) {
-                                    break;
+                                .string => |bin| if (try checkBin(allocator, bin, query)) |matchedBin| {
+                                    try matchedBins.append(matchedBin);
                                 },
                                 else => {},
                             }
                         }
                         if (args.items.len > 1) {
                             switch (args.items[1]) {
-                                .string => |bin| if (try checkBin(allocator, bin, query, stem, version, &state.matches)) {
-                                    break;
+                                .string => |bin| if (try checkBin(allocator, bin, query)) |matchedBin| {
+                                    try matchedBins.append(matchedBin);
                                 },
                                 else => {},
                             }
@@ -235,6 +244,10 @@ fn matchPackageAux(packagesDir: std.fs.Dir, query: mvzr.Regex, manifestName: []c
                     else => continue,
                 },
             else => return,
+        }
+
+        if (matchedBins.items.len != 0) {
+            try state.matches.append(try SearchMatch.init(allocator, stem, version, matchedBins));
         }
     }
 }
