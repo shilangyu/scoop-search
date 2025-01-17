@@ -91,19 +91,16 @@ pub const SearchMatch = struct {
     bins: std.ArrayList([]const u8),
     allocator: std.mem.Allocator,
 
-    fn init(allocator: std.mem.Allocator, name: []const u8, version: []const u8, bins: ?std.ArrayList([]const u8)) !@This() {
+    fn init(allocator: std.mem.Allocator, name: []const u8, version: []const u8, bins: std.ArrayList([]const u8)) !@This() {
         return .{
             .name = try allocator.dupe(u8, name),
             .version = try allocator.dupe(u8, version),
             .bins = blk: {
-                if (bins) |b| {
-                    var dupedBins = try std.ArrayList([]const u8).initCapacity(allocator, b.items.len);
-                    for (b.items) |bin| {
-                        try dupedBins.append(try allocator.dupe(u8, bin));
-                    }
-                    break :blk dupedBins;
+                var dupedBins = try std.ArrayList([]const u8).initCapacity(allocator, bins.items.len);
+                for (bins.items) |bin| {
+                    try dupedBins.append(try allocator.dupe(u8, bin));
                 }
-                break :blk std.ArrayList([]const u8).init(allocator);
+                break :blk dupedBins;
             },
             .allocator = allocator,
         };
@@ -208,7 +205,7 @@ fn matchPackageAux(packagesDir: std.fs.Dir, query: mvzr.Regex, manifestName: []c
 
     // does the package name match?
     if (query.isMatch(lowerStem)) {
-        try state.matches.append(try SearchMatch.init(allocator, stem, version, null));
+        try state.matches.append(try SearchMatch.init(allocator, stem, version, std.ArrayList([]const u8).init(allocator)));
     } else {
         var matchedBins = std.ArrayList([]const u8).init(allocator);
         defer matchedBins.deinit();
