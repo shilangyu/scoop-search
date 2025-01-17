@@ -88,7 +88,7 @@ const ThreadPool = @import("thread_pool.zig").ThreadPool(ThreadPoolState);
 pub const SearchMatch = struct {
     name: []const u8,
     version: []const u8,
-    bins: ?std.ArrayList([]const u8),
+    bins: std.ArrayList([]const u8),
     allocator: std.mem.Allocator,
 
     fn init(allocator: std.mem.Allocator, name: []const u8, version: []const u8, bins: ?std.ArrayList([]const u8)) !@This() {
@@ -103,7 +103,7 @@ pub const SearchMatch = struct {
                     }
                     break :blk dupedBins;
                 }
-                break :blk null;
+                break :blk std.ArrayList([]const u8).init(allocator);
             },
             .allocator = allocator,
         };
@@ -112,12 +112,10 @@ pub const SearchMatch = struct {
     pub fn deinit(self: *@This()) void {
         self.allocator.free(self.name);
         self.allocator.free(self.version);
-        if (self.bins) |bins| {
-            for (bins.items) |bin| {
-                self.allocator.free(bin);
-            }
-            bins.deinit();
+        for (self.bins.items) |bin| {
+            self.allocator.free(bin);
         }
+        self.bins.deinit();
     }
 };
 
