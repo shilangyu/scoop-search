@@ -137,8 +137,7 @@ fn printResults(allocator: std.mem.Allocator, results: *std.ArrayList(SearchResu
             try buffer.appendSlice(match.version);
             try buffer.append(')');
             if (match.bins.items.len != 0) {
-                try buffer.appendSlice(" --> includes ");
-                try buffer.append('\'');
+                try buffer.appendSlice(" --> includes '");
                 try buffer.appendSlice(match.bins.items[0]);
                 try buffer.append('\'');
             }
