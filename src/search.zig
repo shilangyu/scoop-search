@@ -203,13 +203,13 @@ fn matchPackageAux(packagesDir: std.fs.Dir, query: mvzr.Regex, manifestName: []c
     const lowerStem = try std.ascii.allocLowerString(allocator, stem);
     defer allocator.free(lowerStem);
 
+    var matchedBins = std.ArrayList([]const u8).init(allocator);
+    defer matchedBins.deinit();
+
     // does the package name match?
     if (query.isMatch(lowerStem)) {
-        try state.matches.append(try SearchMatch.init(allocator, stem, version, std.ArrayList([]const u8).init(allocator)));
+        try state.matches.append(try SearchMatch.init(allocator, stem, version, matchedBins));
     } else {
-        var matchedBins = std.ArrayList([]const u8).init(allocator);
-        defer matchedBins.deinit();
-
         // the name did not match, lets see if any binary files do
         switch (parsed.value.bin orelse .null) {
             .string => |bin| {
