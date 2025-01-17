@@ -97,7 +97,7 @@ pub const SearchMatch = struct {
             .version = try allocator.dupe(u8, version),
             .bins = blk: {
                 if (bins) |b| {
-                    var dupedBins = std.ArrayList([]const u8).init(allocator);
+                    var dupedBins = try std.ArrayList([]const u8).initCapacity(allocator, b.items.len);
                     for (b.items) |bin| {
                         try dupedBins.append(try allocator.dupe(u8, bin));
                     }
