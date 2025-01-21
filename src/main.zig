@@ -98,13 +98,13 @@ pub fn main() !void {
 
     try debug.log("Done searching\n", .{});
 
-    const hasMatches = try printResults(allocator, &results);
+    const hasMatches = try printResults(&results);
     if (!hasMatches)
         std.process.exit(1);
 }
 
 /// Returns whether there were any matches.
-fn printResults(allocator: std.mem.Allocator, results: *std.ArrayList(SearchResult)) !bool {
+fn printResults(results: *std.ArrayList(SearchResult)) !bool {
     const SearchResultBucketSort = struct {
         fn lessThan(context: void, lhs: SearchResult, rhs: SearchResult) bool {
             _ = context;
@@ -116,9 +116,10 @@ fn printResults(allocator: std.mem.Allocator, results: *std.ArrayList(SearchResu
 
     var hasMatches = false;
 
-    // reserve some conservative amount of memory to avoid initial allocs
-    var buffer = try std.ArrayList(u8).initCapacity(allocator, 8 * 1024);
-    defer buffer.deinit();
+    // get a buffered writer for stdout
+    const stdout = std.io.getStdOut();
+    var bw = std.io.BufferedWriter(8 * 1024, std.fs.File.Writer){ .unbuffered_writer = stdout.writer() };
+    defer stdout.close();
 
     for (results.items) |*result| {
         if (result.result.matches.items.len == 0) {
@@ -126,30 +127,30 @@ fn printResults(allocator: std.mem.Allocator, results: *std.ArrayList(SearchResu
         }
         hasMatches = true;
 
-        try buffer.append('\'');
-        try buffer.appendSlice(result.bucketName);
-        try buffer.appendSlice("' bucket:\n");
+        _ = try bw.write("'");
+        _ = try bw.write(result.bucketName);
+        _ = try bw.write("' bucket:\n");
 
         for (result.result.matches.items) |match| {
-            try buffer.appendSlice("    ");
-            try buffer.appendSlice(match.name);
-            try buffer.appendSlice(" (");
-            try buffer.appendSlice(match.version);
-            try buffer.append(')');
+            _ = try bw.write("    ");
+            _ = try bw.write(match.name);
+            _ = try bw.write(" (");
+            _ = try bw.write(match.version);
+            _ = try bw.write(")");
             if (match.bins.items.len != 0) {
-                try buffer.appendSlice(" --> includes '");
-                try buffer.appendSlice(match.bins.items[0]);
-                try buffer.append('\'');
+                _ = try bw.write(" --> includes '");
+                _ = try bw.write(match.bins.items[0]);
+                _ = try bw.write("'");
             }
-            try buffer.append('\n');
+            _ = try bw.write("\n");
         }
-        try buffer.append('\n');
+        _ = try bw.write("\n");
     }
 
     if (!hasMatches) {
-        try buffer.appendSlice("No matches found.\n");
+        _ = try bw.write("No matches found.\n");
     }
 
-    try std.io.getStdOut().writeAll(buffer.items);
+    try bw.flush();
     return hasMatches;
 }
