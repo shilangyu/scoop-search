@@ -108,6 +108,8 @@ fn printResults(allocator: std.mem.Allocator, results: *std.ArrayList(SearchResu
     const SearchResultBucketSort = struct {
         fn lessThan(context: void, lhs: SearchResult, rhs: SearchResult) bool {
             _ = context;
+            if (std.mem.eql(u8, "main", lhs.bucketName)) return true;
+            if (std.mem.eql(u8, "main", rhs.bucketName)) return false;
             return std.mem.order(u8, lhs.bucketName, rhs.bucketName).compare(.lt);
         }
     };
