@@ -121,8 +121,6 @@ fn printResults(results: *std.ArrayList(SearchResult)) !bool {
     var bw = std.io.BufferedWriter(8 * 1024, std.fs.File.Writer){ .unbuffered_writer = stdout.writer() };
     defer stdout.close();
 
-    const colorConfig = std.io.tty.detectConfig(stdout);
-
     for (results.items) |*result| {
         if (result.result.matches.items.len == 0) {
             continue;
@@ -150,6 +148,8 @@ fn printResults(results: *std.ArrayList(SearchResult)) !bool {
     }
 
     if (!hasMatches) {
+        const colorConfig = std.io.tty.detectConfig(stdout);
+
         try colorConfig.setColor(bw.writer(), std.io.tty.Color.yellow);
         _ = try bw.write("WARN  No matches found.\n");
         try colorConfig.setColor(bw.writer(), std.io.tty.Color.reset);
