@@ -123,7 +123,7 @@ fn getPackagesDir(allocator: std.mem.Allocator, bucketBase: []const u8) !std.fs.
     defer allocator.free(packagesPath);
 
     const packages = std.fs.openDirAbsolute(packagesPath, .{ .iterate = true }) catch
-    // fallback to $bucketName
+        // fallback to $bucketName
         try std.fs.openDirAbsolute(bucketBase, .{ .iterate = true });
 
     return packages;
