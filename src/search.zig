@@ -143,15 +143,16 @@ pub fn searchBucket(allocator: std.mem.Allocator, query: mvzr.Regex, bucketBase:
         names.deinit();
     }
 
-    var iter = packages.iterate();
-    while (try iter.next()) |f| {
+    var walker = try packages.walk(allocator);
+    defer walker.deinit();
+    while (try walker.next()) |f| {
         if (f.kind != .file) {
             continue;
         }
 
-        try names.append(try allocator.dupe(u8, f.name));
+        try names.append(try allocator.dupe(u8, f.path));
 
-        try tp.spawn(matchPackage, .{ iter.dir, query, names.getLast() });
+        try tp.spawn(matchPackage, .{ packages, query, names.getLast() });
     }
 
     const states = tp.deinit();
@@ -177,16 +178,16 @@ fn matchPackage(packagesDir: std.fs.Dir, query: mvzr.Regex, manifestName: []cons
 }
 
 /// A worker function for checking if a given manifest matches the query.
-fn matchPackageAux(packagesDir: std.fs.Dir, query: mvzr.Regex, manifestName: []const u8, state: *ThreadPoolState) !void {
+fn matchPackageAux(packagesDir: std.fs.Dir, query: mvzr.Regex, manifestPath: []const u8, state: *ThreadPoolState) !void {
     const allocator = state.allocator.ptr.allocator();
 
     const extension = comptime ".json";
-    if (!std.mem.endsWith(u8, manifestName, extension)) {
+    if (!std.mem.endsWith(u8, manifestPath, extension)) {
         return;
     }
-    const stem = manifestName[0..(manifestName.len - extension.len)];
+    const stem = utils.basename(manifestPath).withoutExt;
 
-    const manifest = try packagesDir.openFile(manifestName, .{});
+    const manifest = try packagesDir.openFile(manifestPath, .{});
     defer manifest.close();
     const content = try utils.readFileRealloc(allocator, manifest, &state.read_buffer);
 
