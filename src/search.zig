@@ -1,8 +1,10 @@
 const std = @import("std");
+
+const mvzr = @import("mvzr");
+
 const utils = @import("utils.zig");
 const Box = utils.Box;
 const DebugLogger = utils.DebugLogger;
-const mvzr = @import("mvzr");
 
 /// State associated with a worker thread. Stores thread local cache and matches. Has its own allocator.
 const ThreadPoolState = struct {
@@ -123,7 +125,7 @@ fn getPackagesDir(allocator: std.mem.Allocator, bucketBase: []const u8) !std.fs.
     defer allocator.free(packagesPath);
 
     const packages = std.fs.openDirAbsolute(packagesPath, .{ .iterate = true }) catch
-    // fallback to $bucketName
+        // fallback to $bucketName
         try std.fs.openDirAbsolute(bucketBase, .{ .iterate = true });
 
     return packages;
