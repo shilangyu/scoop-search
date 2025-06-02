@@ -1,6 +1,6 @@
 const std = @import("std");
-const builtin = @import("builtin");
 const assert = std.debug.assert;
+const builtin = @import("builtin");
 
 /// A heap allocator optimized for each platform/compilation mode.
 pub const HeapAllocator = struct {
@@ -9,7 +9,7 @@ pub const HeapAllocator = struct {
     backing_allocator: if (builtin.mode == .Debug)
         std.heap.GeneralPurposeAllocator(.{})
     else if (is_windows)
-        std.heap.HeapAllocator
+        std.mem.Allocator
     else if (builtin.link_libc)
         void
     else
@@ -19,7 +19,7 @@ pub const HeapAllocator = struct {
         return .{ .backing_allocator = if (builtin.mode == .Debug)
             std.heap.GeneralPurposeAllocator(.{}){}
         else if (is_windows)
-            std.heap.HeapAllocator.init()
+            std.heap.smp_allocator
         else if (builtin.link_libc) {} };
     }
 
@@ -27,7 +27,7 @@ pub const HeapAllocator = struct {
         if (builtin.mode == .Debug) {
             return self.backing_allocator.allocator();
         } else if (is_windows) {
-            return self.backing_allocator.allocator();
+            return self.backing_allocator;
         } else if (builtin.link_libc) {
             return std.heap.c_allocator;
         }
@@ -36,8 +36,6 @@ pub const HeapAllocator = struct {
     pub fn deinit(self: *@This()) void {
         if (builtin.mode == .Debug) {
             assert(self.backing_allocator.deinit() == .ok);
-        } else if (is_windows) {
-            self.backing_allocator.deinit();
         }
     }
 };
