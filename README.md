@@ -17,7 +17,7 @@ Instead of using `scoop-search.exe <term>` you can create a hook that will run `
 Add this to your Powershell profile (usually located at `$PROFILE`)
 
 ```ps1
-Invoke-Expression (&scoop-search --hook)
+. ([ScriptBlock]::Create((& scoop-search --hook | Out-String)))
 ```
 
 ## CMD.exe wrapper
